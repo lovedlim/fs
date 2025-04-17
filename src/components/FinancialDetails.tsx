@@ -1,30 +1,32 @@
 'use client';
 
 import { formatAmount } from '@/lib/utils/financialUtils';
+import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/lib/types/financial';
 
 interface FinancialDetailsProps {
-  balanceSheet: any;
-  incomeStatement: any;
-  ratios: any;
+  balanceSheet: BalanceSheet | null;
+  incomeStatement: IncomeStatement | null;
+  ratios: FinancialRatios | null;
 }
 
 export default function FinancialDetails({ balanceSheet, incomeStatement, ratios }: FinancialDetailsProps) {
-  // 데이터가 유효한지 확인
-  if (!balanceSheet?.rawData || !incomeStatement?.rawData || !ratios?.data) {
+  if (!balanceSheet || !incomeStatement || !ratios) {
     return (
       <div className="mt-12 mb-10 flex justify-center items-center p-8 bg-white rounded-lg shadow">
-        <p className="text-gray-500">재무제표 데이터가 유효하지 않습니다</p>
+        <p className="text-gray-500">세부 재무 정보를 표시하기 위한 데이터가 부족합니다.</p>
       </div>
     );
   }
   
   const bs = balanceSheet.rawData;
   const is = incomeStatement.rawData;
+  const ratioData = ratios.data;
   
-  // 계정과목별 전년대비 증감률 계산
   const calculateGrowthRate = (current: number, previous: number): string => {
-    if (previous === 0) return 'N/A';
-    const rate = ((current - previous) / previous * 100).toFixed(2);
+    if (previous === 0 || previous === undefined || previous === null) return 'N/A';
+    const prevNum = Number(previous);
+    if (isNaN(prevNum)) return 'N/A';
+    const rate = ((current - prevNum) / Math.abs(prevNum) * 100).toFixed(2);
     return rate;
   };
   
@@ -260,7 +262,7 @@ export default function FinancialDetails({ balanceSheet, incomeStatement, ratios
           <div className="p-4 border rounded-lg bg-gray-50">
             <div className="text-sm text-gray-500 mb-1">유동비율</div>
             <div className="text-2xl font-bold text-gray-800 mb-1">
-              {ratios.data.currentRatio !== 'N/A' ? ratios.data.currentRatio + '%' : 'N/A'}
+              {ratioData.currentRatio !== 'N/A' ? ratioData.currentRatio + '%' : 'N/A'}
             </div>
             <div className="text-xs text-gray-600">
               유동자산 / 유동부채 × 100
@@ -270,7 +272,7 @@ export default function FinancialDetails({ balanceSheet, incomeStatement, ratios
           <div className="p-4 border rounded-lg bg-gray-50">
             <div className="text-sm text-gray-500 mb-1">부채비율</div>
             <div className="text-2xl font-bold text-gray-800 mb-1">
-              {ratios.data.debtToEquityRatio !== 'N/A' ? ratios.data.debtToEquityRatio + '%' : 'N/A'}
+              {ratioData.debtToEquityRatio !== 'N/A' ? ratioData.debtToEquityRatio + '%' : 'N/A'}
             </div>
             <div className="text-xs text-gray-600">
               부채총계 / 자본총계 × 100
@@ -280,7 +282,7 @@ export default function FinancialDetails({ balanceSheet, incomeStatement, ratios
           <div className="p-4 border rounded-lg bg-gray-50">
             <div className="text-sm text-gray-500 mb-1">자기자본비율</div>
             <div className="text-2xl font-bold text-gray-800 mb-1">
-              {ratios.data.equityRatio !== 'N/A' ? ratios.data.equityRatio + '%' : 'N/A'}
+              {ratioData.equityRatio !== 'N/A' ? ratioData.equityRatio + '%' : 'N/A'}
             </div>
             <div className="text-xs text-gray-600">
               자본총계 / 자산총계 × 100
@@ -290,7 +292,7 @@ export default function FinancialDetails({ balanceSheet, incomeStatement, ratios
           <div className="p-4 border rounded-lg bg-gray-50">
             <div className="text-sm text-gray-500 mb-1">매출액영업이익률</div>
             <div className="text-2xl font-bold text-gray-800 mb-1">
-              {ratios.data.operatingProfitMargin !== 'N/A' ? ratios.data.operatingProfitMargin + '%' : 'N/A'}
+              {ratioData.operatingProfitMargin !== 'N/A' ? ratioData.operatingProfitMargin + '%' : 'N/A'}
             </div>
             <div className="text-xs text-gray-600">
               영업이익 / 매출액 × 100
@@ -300,7 +302,7 @@ export default function FinancialDetails({ balanceSheet, incomeStatement, ratios
           <div className="p-4 border rounded-lg bg-gray-50">
             <div className="text-sm text-gray-500 mb-1">매출액순이익률</div>
             <div className="text-2xl font-bold text-gray-800 mb-1">
-              {ratios.data.netProfitMargin !== 'N/A' ? ratios.data.netProfitMargin + '%' : 'N/A'}
+              {ratioData.netProfitMargin !== 'N/A' ? ratioData.netProfitMargin + '%' : 'N/A'}
             </div>
             <div className="text-xs text-gray-600">
               당기순이익 / 매출액 × 100
@@ -310,7 +312,7 @@ export default function FinancialDetails({ balanceSheet, incomeStatement, ratios
           <div className="p-4 border rounded-lg bg-gray-50">
             <div className="text-sm text-gray-500 mb-1">ROE (자기자본이익률)</div>
             <div className="text-2xl font-bold text-gray-800 mb-1">
-              {ratios.data.returnOnEquity !== 'N/A' ? ratios.data.returnOnEquity + '%' : 'N/A'}
+              {ratioData.returnOnEquity !== 'N/A' ? ratioData.returnOnEquity + '%' : 'N/A'}
             </div>
             <div className="text-xs text-gray-600">
               당기순이익 / 자본총계 × 100
@@ -320,7 +322,7 @@ export default function FinancialDetails({ balanceSheet, incomeStatement, ratios
           <div className="p-4 border rounded-lg bg-gray-50">
             <div className="text-sm text-gray-500 mb-1">ROA (총자산이익률)</div>
             <div className="text-2xl font-bold text-gray-800 mb-1">
-              {ratios.data.returnOnAssets !== 'N/A' ? ratios.data.returnOnAssets + '%' : 'N/A'}
+              {ratioData.returnOnAssets !== 'N/A' ? ratioData.returnOnAssets + '%' : 'N/A'}
             </div>
             <div className="text-xs text-gray-600">
               당기순이익 / 자산총계 × 100

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FinancialData } from '@/types/financial';
+import ReactMarkdown from 'react-markdown';
 
 interface FinancialAnalysisProps {
   balanceSheet: FinancialData['balanceSheet'];

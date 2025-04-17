@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -12,10 +11,13 @@ import {
   ArcElement,
   LineElement,
   PointElement,
-  RadialLinearScale
+  RadialLinearScale,
+  ChartData,
+  ChartOptions
 } from 'chart.js';
 import { Bar, Pie, Line, Radar } from 'react-chartjs-2';
 import { formatAmount } from '@/lib/utils/financialUtils';
+import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/lib/types/financial';
 
 // Chart.js 등록
 ChartJS.register(
@@ -31,16 +33,16 @@ ChartJS.register(
   RadialLinearScale
 );
 
-interface ChartProps {
-  data: any;
+interface ChartComponentProps {
+  data: ChartData<any, number[], any>;
   title: string;
   type: 'bar' | 'pie' | 'line' | 'radar';
   height?: number;
-  options?: any;
+  options?: ChartOptions<any>;
 }
 
-const ChartComponent = ({ data, title, type, height = 300, options = {} }: ChartProps) => {
-  const defaultOptions = {
+const ChartComponent = ({ data, title, type, height = 300, options = {} }: ChartComponentProps) => {
+  const defaultOptions: ChartOptions<any> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -110,17 +112,29 @@ const ChartComponent = ({ data, title, type, height = 300, options = {} }: Chart
 };
 
 interface FinancialChartsProps {
-  balanceSheet: any;
-  incomeStatement: any;
-  ratios: any;
+  balanceSheet: BalanceSheet | null;
+  incomeStatement: IncomeStatement | null;
+  ratios: FinancialRatios | null;
 }
 
 export default function FinancialCharts({ balanceSheet, incomeStatement, ratios }: FinancialChartsProps) {
-  // 재무 상태표 및 손익 계산서 데이터
-  const bs = balanceSheet?.rawData || { years: {}, assets: {}, liabilities: {}, equity: {} };
-  const is = incomeStatement?.rawData || { years: {} };
+  // Add a guard clause to ensure all necessary props are available
+  if (!balanceSheet || !incomeStatement || !ratios) {
+    return (
+      <div className="mt-10">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">재무제표 분석</h2>
+        <p className="text-center text-gray-500">차트를 표시하기 위한 데이터가 부족합니다.</p>
+      </div>
+    );
+  }
+
+  // Now we know props are not null, remove optional chaining where appropriate
+  const bs = balanceSheet.rawData; 
+  const is = incomeStatement.rawData;
+  const ratioData = ratios.data; // Access ratios.data directly
+  const ratioChartData = ratios.chartData; // Access ratios.chartData directly
   
-  // 디버깅용 로그
+  // 디버깅용 로그 - Can keep or remove
   console.log("*** 데이터 디버깅 ***");
   console.log("balanceSheet:", balanceSheet);
   console.log("incomeStatement:", incomeStatement);
@@ -130,15 +144,15 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
   console.log("당기순이익:", is.rawNetIncome, is.netIncome);
   console.log("*******************");
   
-  // 자산 구조 데이터 생성
+  // 자산 구조 데이터 생성 (bs is guaranteed to be non-null here)
   const assetStructure = {
     labels: ['유동자산', '비유동자산'],
     datasets: [
       {
-        label: bs.years?.current || '당기',
+        label: bs.years.current, // No need for ?. 
         data: [
-          bs.assets?.current || 0,
-          bs.assets?.nonCurrent || 0
+          bs.assets.current, // No need for ?. 
+          bs.assets.nonCurrent // No need for ?. 
         ],
         backgroundColor: [
           'rgba(54, 162, 235, 0.7)',
@@ -153,15 +167,15 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
     ]
   };
   
-  // 부채 및 자본 구조 데이터 생성
+  // 부채 및 자본 구조 데이터 생성 (bs is guaranteed to be non-null)
   const liabEquityStructure = {
     labels: ['부채총계', '자본총계'],
     datasets: [
       {
-        label: bs.years?.current || '당기',
+        label: bs.years.current,
         data: [
-          bs.liabilities?.total || 0,
-          bs.equity?.total || 0
+          bs.liabilities.total, // No need for ?. 
+          bs.equity.total // No need for ?. 
         ],
         backgroundColor: [
           'rgba(255, 99, 132, 0.7)',
@@ -176,15 +190,15 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
     ]
   };
   
-  // 수익성 지표 데이터 생성
+  // 수익성 지표 데이터 생성 (is and incomeStatement are guaranteed to be non-null)
   const profitMarginData = {
     labels: ['영업이익률', '순이익률'],
     datasets: [
       {
-        label: is.years?.current || '당기',
+        label: is.years.current,
         data: [
-          is.revenue && is.revenue > 0 ? ((is.operatingProfit || 0) / is.revenue * 100) || 0 : 0,
-          is.revenue && is.revenue > 0 ? ((is.netIncome || 0) / is.revenue * 100) || 0 : 0
+          is.revenue > 0 ? (is.operatingProfit / is.revenue * 100) : 0,
+          is.revenue > 0 ? (is.netIncome / is.revenue * 100) : 0
         ],
         backgroundColor: 'rgba(54, 162, 235, 0.2)',
         borderColor: 'rgba(54, 162, 235, 1)',
@@ -192,14 +206,12 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
         tension: 0.1
       },
       {
-        label: is.years?.previous || '전기',
+        label: is.years.previous,
         data: [
-          incomeStatement?.chartData?.datasets?.[1]?.data?.[1] && incomeStatement?.chartData?.datasets?.[1]?.data?.[0] && 
-          incomeStatement.chartData.datasets[1].data[0] > 0 ?
-            (incomeStatement.chartData.datasets[1].data[1] / incomeStatement.chartData.datasets[1].data[0] * 100) || 0 : 0,
-          incomeStatement?.chartData?.datasets?.[1]?.data?.[2] && incomeStatement?.chartData?.datasets?.[1]?.data?.[0] && 
-          incomeStatement.chartData.datasets[1].data[0] > 0 ?
-            (incomeStatement.chartData.datasets[1].data[2] / incomeStatement.chartData.datasets[1].data[0] * 100) || 0 : 0
+          incomeStatement.chartData.datasets[1].data[1] && incomeStatement.chartData.datasets[1].data[0] > 0 ?
+            (incomeStatement.chartData.datasets[1].data[1] / incomeStatement.chartData.datasets[1].data[0] * 100) : 0,
+          incomeStatement.chartData.datasets[1].data[2] && incomeStatement.chartData.datasets[1].data[0] > 0 ?
+            (incomeStatement.chartData.datasets[1].data[2] / incomeStatement.chartData.datasets[1].data[0] * 100) : 0
         ],
         backgroundColor: 'rgba(255, 99, 132, 0.2)',
         borderColor: 'rgba(255, 99, 132, 1)',
@@ -209,20 +221,20 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
     ]
   };
 
-  // 재무 지표 레이더 차트 데이터
+  // 재무 지표 레이더 차트 데이터 (ratioData is guaranteed to be non-null)
   const financialHealthData = {
     labels: ['유동비율', '부채비율', '자기자본비율', '영업이익률', '순이익률', 'ROE', 'ROA'],
     datasets: [
       {
-        label: bs.years?.current || '당기',
+        label: bs.years.current,
         data: [
-          ratios?.data?.currentRatio !== 'N/A' ? parseFloat(ratios?.data?.currentRatio || '0') : 0,
-          ratios?.data?.debtToEquityRatio !== 'N/A' ? parseFloat(ratios?.data?.debtToEquityRatio || '0') : 0,
-          ratios?.data?.equityRatio !== 'N/A' ? parseFloat(ratios?.data?.equityRatio || '0') : 0,
-          ratios?.data?.operatingProfitMargin !== 'N/A' ? parseFloat(ratios?.data?.operatingProfitMargin || '0') : 0,
-          ratios?.data?.netProfitMargin !== 'N/A' ? parseFloat(ratios?.data?.netProfitMargin || '0') : 0,
-          ratios?.data?.returnOnEquity !== 'N/A' ? parseFloat(ratios?.data?.returnOnEquity || '0') : 0,
-          ratios?.data?.returnOnAssets !== 'N/A' ? parseFloat(ratios?.data?.returnOnAssets || '0') : 0
+          ratioData.currentRatio !== 'N/A' ? parseFloat(ratioData.currentRatio) : 0,
+          ratioData.debtToEquityRatio !== 'N/A' ? parseFloat(ratioData.debtToEquityRatio) : 0,
+          ratioData.equityRatio !== 'N/A' ? parseFloat(ratioData.equityRatio) : 0,
+          ratioData.operatingProfitMargin !== 'N/A' ? parseFloat(ratioData.operatingProfitMargin) : 0,
+          ratioData.netProfitMargin !== 'N/A' ? parseFloat(ratioData.netProfitMargin) : 0,
+          ratioData.returnOnEquity !== 'N/A' ? parseFloat(ratioData.returnOnEquity) : 0,
+          ratioData.returnOnAssets !== 'N/A' ? parseFloat(ratioData.returnOnAssets) : 0
         ],
         backgroundColor: 'rgba(54, 162, 235, 0.2)',
         borderColor: 'rgba(54, 162, 235, 1)',
@@ -235,10 +247,10 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
     ]
   };
 
-  // 연간 성장률 계산
+  // 연간 성장률 계산 (is and incomeStatement are guaranteed to be non-null)
   const calculateGrowthRate = (current: number, previous: number): string => {
     if (previous === 0) return 'N/A';
-    return ((current - previous) / previous * 100).toFixed(2);
+    return ((current - previous) / Math.abs(previous) * 100).toFixed(2); // Use Math.abs for previous
   };
 
   return (
@@ -250,7 +262,7 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-700">재무상태표 (억원)</h3>
             <div className="text-sm text-gray-500">
-              {bs.years?.current || '-'}
+              {bs.years.current || '-'}
             </div>
           </div>
           <ChartComponent 
@@ -365,7 +377,7 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-700">재무 건전성</h3>
             <div className="text-sm text-gray-500">
-              {bs.years?.current || '-'}
+              {bs.years.current || '-'}
             </div>
           </div>
           <ChartComponent 
@@ -390,11 +402,11 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-700">주요 재무 비율</h3>
           <div className="text-sm text-gray-500">
-            {bs.years?.current || '-'}
+            {bs.years.current || '-'}
           </div>
         </div>
         <ChartComponent 
-          data={ratios?.chartData || { labels: [], datasets: [] }} 
+          data={ratioChartData} // Use ratioChartData directly
           title="재무 비율 (%)" 
           type="bar" 
           height={250}

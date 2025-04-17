@@ -10,15 +10,16 @@ import { Company, FinancialData } from '@/types/financial';
 
 export default function Home() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [year, setYear] = useState<string>("2024");
+  const [dataCache, setDataCache] = useState<{[key: string]: FinancialData}>({});
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [year, setYear] = useState<string>("2024");
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   
   // API 호출 최적화를 위한 캐시
-  const [dataCache, setDataCache] = useState<Record<string, FinancialData>>({});
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
   
   // 회사 선택 시 재무제표 데이터 가져오기
   const handleCompanySelect = useCallback(async (company: Company) => {
@@ -124,14 +125,6 @@ export default function Home() {
     }
   };
   
-  // Render logic
-  let chartRatios = null;
-  if (financialData && !loading && !error) {
-    // Log ratios here before rendering FinancialCharts
-    console.log('page.tsx - Passing ratios:', JSON.stringify(financialData.ratios, null, 2));
-    chartRatios = financialData.ratios;
-  }
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-6 md:p-12 lg:p-24 bg-gray-50">
       <div className="max-w-7xl mx-auto">
@@ -180,7 +173,6 @@ export default function Home() {
         {!loading && !error && financialData && (
           <>
             {(() => { // Immediately invoked function expression to allow logging
-              console.log('page.tsx - Passing ratios:', JSON.stringify(financialData.ratios, null, 2));
               return null; // IIFE must return something renderable (or null)
             })()}
             <FinancialCharts 
