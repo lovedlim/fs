@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFinancialStatements } from '@/lib/services/companyService';
 import { processBalanceSheet, processIncomeStatement } from '@/lib/utils/financialUtils';
-import { calculateFinancialRatios } from '@/lib/utils/financeRatios';
+import { calculateFinancialRatios } from '@/lib/utils/financialUtils';
 import { ApiError } from '@/types/financial';
 
 export async function GET(request: NextRequest) {

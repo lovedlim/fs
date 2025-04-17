@@ -124,7 +124,7 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
   console.log("*** 데이터 디버깅 ***");
   console.log("balanceSheet:", balanceSheet);
   console.log("incomeStatement:", incomeStatement);
-  console.log("ratios:", ratios);
+  console.log("ratios:", JSON.stringify(ratios, null, 2));
   console.log("매출액:", is.rawRevenue, is.revenue);
   console.log("영업이익:", is.rawOperatingProfit, is.operatingProfit);
   console.log("당기순이익:", is.rawNetIncome, is.netIncome);
@@ -401,6 +401,9 @@ export default function FinancialCharts({ balanceSheet, incomeStatement, ratios 
           options={{
             scales: {
               y: {
+                beginAtZero: true 
+              },
+              x: { 
                 beginAtZero: true,
                 title: {
                   display: true,

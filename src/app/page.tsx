@@ -124,8 +124,16 @@ export default function Home() {
     }
   };
   
+  // Render logic
+  let chartRatios = null;
+  if (financialData && !loading && !error) {
+    // Log ratios here before rendering FinancialCharts
+    console.log('page.tsx - Passing ratios:', JSON.stringify(financialData.ratios, null, 2));
+    chartRatios = financialData.ratios;
+  }
+
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-8">
+    <main className="flex min-h-screen flex-col items-center justify-between p-6 md:p-12 lg:p-24 bg-gray-50">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">재미있는 재무제표 (재재)</h1>
         
@@ -162,25 +170,19 @@ export default function Home() {
         </div>
         
         {loading && (
-          <div className="flex justify-center items-center h-64 mt-8">
-            <div className="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-            <p className="ml-4 text-gray-600">재무 데이터를 불러오는 중...</p>
+          <div className="mt-12 mb-10 flex justify-center items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
         )}
         
-        {error && (
-          <div className="mt-8 p-6 bg-red-50 rounded-lg shadow">
-            <p className="text-red-600 text-center mb-2">{error}</p>
-            <p className="text-sm text-center text-gray-600">
-              • 다른 연도를 선택해 보세요<br />
-              • 해당 기업에 대한 공시 데이터가 있는지 확인하세요<br />
-              • 지원되는 연도: 2015년부터 현재까지
-            </p>
-          </div>
-        )}
+        {error && <div className="mt-10 text-red-500 text-center">{error}</div>}
         
         {!loading && !error && financialData && (
           <>
+            {(() => { // Immediately invoked function expression to allow logging
+              console.log('page.tsx - Passing ratios:', JSON.stringify(financialData.ratios, null, 2));
+              return null; // IIFE must return something renderable (or null)
+            })()}
             <FinancialCharts 
               balanceSheet={financialData.balanceSheet} 
               incomeStatement={financialData.incomeStatement}
@@ -252,7 +254,7 @@ export default function Home() {
             </div>
           </>
         )}
-      </div>
-    </main>
+        </div>
+      </main>
   );
 }

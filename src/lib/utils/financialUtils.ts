@@ -614,6 +614,16 @@ export function calculateFinancialRatios(balanceSheet: BalanceSheet, incomeState
     ]
   };
   
+  // Add logging for debugging
+  console.log('Balance Sheet Raw Data:', JSON.stringify(bs, null, 2));
+  console.log('Income Statement Raw Data:', JSON.stringify(is, null, 2));
+
+  // Log calculated ratios
+  console.log('Calculated Ratios:', JSON.stringify(ratios, null, 2));
+
+  // Log growth rates
+  console.log('Calculated Growth Rates:', JSON.stringify(growthRates, null, 2));
+  
   return {
     data: {
       ...ratios,
