@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FinancialData, BalanceSheet, IncomeStatement, FinancialRatios } from '@/types/financial';
-import ReactMarkdown from 'react-markdown';
+import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/types/financial';
 
 interface FinancialAnalysisProps {
   balanceSheet: BalanceSheet | null;
@@ -68,7 +67,7 @@ export default function FinancialAnalysis({ balanceSheet, incomeStatement, ratio
         <li>주요 재무비율을 통한 기업 가치 판단 지원</li>
       </ul>
       <p className="mt-3 text-sm text-gray-500 italic">
-        * 페이지 하단의 "재미있는 재무제표 (재재)"에서는 더 상세한 설명과 함께 사용자 요청 시 추가적인 재무 분석 정보를 제공합니다.
+        * 페이지 하단의 &quot;재미있는 재무제표 (재재)&quot;에서는 더 상세한 설명과 함께 사용자 요청 시 추가적인 재무 분석 정보를 제공합니다.
       </p>
     </div>
   );

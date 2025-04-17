@@ -1,8 +1,8 @@
 import { Company } from '../db/models';
 import axios from 'axios';
 import fs from 'fs';
-import path from 'path';
 import { Op } from 'sequelize';
+import { Company as CompanyType } from '@/types/financial';
 
 // 회사 검색 함수
 export const searchCompany = async (keyword: string) => {
@@ -31,41 +31,30 @@ export const searchCompany = async (keyword: string) => {
   });
 };
 
-// 데이터 파일에서 회사 정보 로드
-export const loadCompaniesFromFile = async (filePath: string) => {
+// 회사 정보를 파일에서 로드하여 DB에 저장
+export async function loadCompaniesFromFile(filePath: string): Promise<void> {
   try {
-    // JSON 파일 읽기
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    // Type the parsed data using CompanyType array
+    const data: CompanyType[] = JSON.parse(fileContent);
     
-    // 배치 처리를 위한 청크 크기 설정
-    const chunkSize = 1000;
-    
-    // 데이터 배열을 청크로 분할
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunk = data.slice(i, i + chunkSize);
-      
-      // 각 청크를 데이터베이스에 일괄 삽입
-      await Company.bulkCreate(
-        chunk.map((item: any) => ({
-          corp_code: item.corp_code,
-          corp_name: item.corp_name,
-          stock_code: item.stock_code || null
-        })),
-        {
-          updateOnDuplicate: ['corp_name', 'stock_code']
-        }
-      );
-      
-      console.log(`처리된 회사 수: ${i + chunk.length}/${data.length}`);
+    console.log(`파일에서 ${data.length}개 회사 정보 로드 완료`);
+
+    // 각 회사 정보에 대해 DB 작업 수행
+    for (const companyData of data) {
+      await Company.upsert({
+        corp_code: companyData.corp_code,
+        corp_name: companyData.corp_name,
+        stock_code: companyData.stock_code,
+      });
     }
     
-    console.log('회사 데이터 로드 완료');
-    
+    console.log(`${data.length}개 회사 정보 DB 저장/업데이트 완료`);
   } catch (error) {
-    console.error('회사 데이터 로드 오류:', error);
+    console.error('파일에서 회사 정보 로드 중 오류:', error);
     throw error;
   }
-};
+}
 
 // DART API에서 재무제표 데이터 가져오기
 export const getFinancialStatements = async (corpCode: string, year: string, reportCode: string): Promise<any> => {

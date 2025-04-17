@@ -19,7 +19,7 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   
   // API 호출 최적화를 위한 캐시
-  const [availableYears, setAvailableYears] = useState<string[]>([]);
+  // const [availableYears, setAvailableYears] = useState<string[]>([]);
   
   // 회사 선택 시 재무제표 데이터 가져오기
   const handleCompanySelect = useCallback(async (company: Company) => {
@@ -243,7 +243,7 @@ export default function Home() {
                       <li>전년도와 비교하여 주목할 만한 변화 포인트 제시</li>
                     </ul>
                     <p className="mt-3 text-sm text-gray-500 italic">
-                      * 상단의 "재무제표 AI 분석"이 기본적인 재무 구조 분석을 제공한다면, 이 기능은 더 상세하고 친절한 설명과 함께 경영 관점의 인사이트를 제공합니다.
+                      * 상단의 &quot;재무제표 AI 분석&quot;이 기본적인 재무 구조 분석을 제공한다면, 이 기능은 더 상세하고 친절한 설명과 함께 경영 관점의 인사이트를 제공합니다.
                     </p>
                   </div>
                 </div>

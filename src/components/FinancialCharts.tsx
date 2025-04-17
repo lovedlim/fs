@@ -34,16 +34,23 @@ ChartJS.register(
   RadialLinearScale
 );
 
-interface ChartComponentProps {
-  data: ChartData<any, number[], any>;
+// Define more specific chart types
+type ChartType = 'bar' | 'pie' | 'line' | 'radar';
+
+interface ChartComponentProps { 
+  // Disable any rule for complex Chart.js types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: ChartData<any, number[], any>; 
   title: string;
   type: 'bar' | 'pie' | 'line' | 'radar';
   height?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: ChartOptions<any>;
 }
 
 const ChartComponent = ({ data, title, type, height = 300, options = {} }: ChartComponentProps) => {
-  const defaultOptions: ChartOptions<any> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const defaultOptions: ChartOptions<any> = { 
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -60,19 +67,22 @@ const ChartComponent = ({ data, title, type, height = 300, options = {} }: Chart
       },
       tooltip: {
         callbacks: {
-          label: function(context: TooltipItem<'bar' | 'pie' | 'line' | 'radar'>) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function(context: TooltipItem<any>) { 
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
             }
             if (context.formattedValue) {
               label += context.formattedValue;
-              if (title.includes('억원') && type !== 'pie') {
+              // Use context.chart.options.plugins?.title?.text
+              const chartTitle = context.chart.options.plugins?.title?.text?.toString();
+              if (chartTitle?.includes('억원')) { 
                 label += ' 억원';
-              } else if (title.includes('%') && type !== 'pie') {
+              } else if (chartTitle?.includes('%')) {
                 label += '%';
               }
-            }
+            } 
             return label;
           }
         }
@@ -80,7 +90,8 @@ const ChartComponent = ({ data, title, type, height = 300, options = {} }: Chart
     },
   };
 
-  const mergedOptions = { ...defaultOptions, ...options };
+  // Simple merge, specific scales should be provided via options prop where needed
+  const mergedOptions = { ...defaultOptions, ...options }; 
   
   // 데이터가 없거나, labels가 없는 경우 빈 화면 표시
   if (!data || !data.labels || !data.datasets) {
