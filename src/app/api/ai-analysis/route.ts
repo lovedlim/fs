@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { ApiError, Company, FinancialData } from '@/types/financial';
 
 export async function POST(request: NextRequest) {
   try {
-    const { company, year, balanceSheet, incomeStatement, ratios } = await request.json();
+    const { company, year, balanceSheet, incomeStatement, ratios }: {
+      company: Company;
+      year: string;
+      balanceSheet: FinancialData['balanceSheet'];
+      incomeStatement: FinancialData['incomeStatement'];
+      ratios: FinancialData['ratios'];
+    } = await request.json();
     
     // API 키 환경변수 확인
     const apiKey = process.env.OPENAI_API_KEY;
@@ -94,19 +101,22 @@ ${financialData}
     const analysis = response.choices[0]?.message?.content || "분석 결과를 생성하지 못했습니다.";
 
     return NextResponse.json({ analysis });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI 분석 오류:', error);
     
+    // API 오류 타입 체크 및 처리
+    const apiError = error as ApiError;
+    
     // OpenAI API 관련 오류 메시지 처리
-    if (error.response) {
+    if (apiError.response) {
       return NextResponse.json(
-        { error: `OpenAI API 오류: ${error.response.status} - ${error.response.data.error.message}` },
-        { status: error.response.status }
+        { error: `OpenAI API 오류: ${apiError.response.status || 500} - ${apiError.response.data?.error?.message || '알 수 없는 오류'}` },
+        { status: apiError.response.status || 500 }
       );
     }
     
     return NextResponse.json(
-      { error: error.message || 'AI 분석 중 오류가 발생했습니다.' },
+      { error: apiError.message || 'AI 분석 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }

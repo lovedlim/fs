@@ -1,65 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFinancialStatements } from '@/lib/services/companyService';
-import { processBalanceSheet, processIncomeStatement, calculateFinancialRatios } from '@/lib/utils/financialUtils';
+import { processBalanceSheet, processIncomeStatement } from '@/lib/utils/financialUtils';
+import { calculateFinancialRatios } from '@/lib/utils/financeRatios';
+import { ApiError } from '@/types/financial';
 
 export async function GET(request: NextRequest) {
   try {
+    // URL에서 쿼리 파라미터 추출
     const searchParams = request.nextUrl.searchParams;
     const corpCode = searchParams.get('corp_code');
-    const year = searchParams.get('year') || new Date().getFullYear().toString();
-    const reportCode = searchParams.get('report_code') || '11011'; // 사업보고서
+    const year = searchParams.get('year');
+    const reportCode = searchParams.get('report_code') || '11011'; // 기본값 설정 (사업보고서)
     
-    if (!corpCode) {
-      return NextResponse.json({ error: '회사 코드가 필요합니다' }, { status: 400 });
+    // 필수 파라미터 확인
+    if (!corpCode || !year) {
+      return NextResponse.json(
+        { error: '회사코드(corp_code)와 년도(year)는 필수 파라미터입니다.' },
+        { status: 400 }
+      );
     }
-    
-    console.log(`재무제표 API 요청 시작: 회사코드=${corpCode}, 연도=${year}, 보고서=${reportCode}`);
     
     // 재무제표 데이터 가져오기
     const financialData = await getFinancialStatements(corpCode, year, reportCode);
     
-    // 데이터 검증
     if (!financialData || !financialData.list || financialData.list.length === 0) {
-      console.error('빈 재무제표 데이터 반환됨:', financialData);
-      return NextResponse.json({ error: '재무제표 데이터가 없습니다. 다른 연도를 선택해 주세요.' }, { status: 404 });
+      return NextResponse.json(
+        { error: `해당 연도(${year})의 재무제표 데이터가 없습니다. 다른 연도를 선택해 주세요.` },
+        { status: 404 }
+      );
     }
     
-    console.log(`재무제표 데이터 가공 시작: 계정 수=${financialData.list.length}`);
-    
-    // 데이터 가공
+    // 재무제표 데이터 처리
     const balanceSheet = processBalanceSheet(financialData);
     const incomeStatement = processIncomeStatement(financialData);
+    
+    // 재무비율 계산
     const ratios = calculateFinancialRatios(balanceSheet, incomeStatement);
     
-    console.log('재무제표 처리 완료');
-    
+    // 결과 반환
     return NextResponse.json({
       balanceSheet,
       incomeStatement,
       ratios
     });
-  } catch (error: any) {
-    console.error('재무제표 가져오기 오류:', error);
     
-    // 오류 메시지와 상태 코드 결정
-    let statusCode = 500;
-    let errorMessage = error.message || '재무제표 데이터를 가져오는 중 오류가 발생했습니다';
+  } catch (error: unknown) {
+    console.error('재무제표 API 오류:', error);
     
-    // 특정 오류 메시지에 따라 상태 코드 조정
-    if (errorMessage.includes('데이터가 없습니다') || errorMessage.includes('존재하지 않습니다')) {
-      statusCode = 404; // Not Found
-    } else if (errorMessage.includes('API 키') || errorMessage.includes('잘못된 API 요청')) {
-      statusCode = 400; // Bad Request
-    } else if (errorMessage.includes('네트워크') || errorMessage.includes('타임아웃')) {
-      statusCode = 503; // Service Unavailable
+    const apiError = error as ApiError;
+    const errorMessage = '재무제표 데이터를 가져오는 중 오류가 발생했습니다';
+    
+    // DART API 응답에서 오류 메시지 추출 시도
+    if (apiError.message) {
+      if (apiError.message.includes('자동으로 조회합니다')) {
+        return NextResponse.json({ error: apiError.message }, { status: 404 });
+      }
+      
+      if (apiError.message.includes('API 키가 유효하지 않습니다')) {
+        return NextResponse.json(
+          { error: '금융감독원 API 키가 유효하지 않습니다. 환경 변수 DART_API_KEY를 확인해 주세요.' },
+          { status: 401 }
+        );
+      }
+      
+      return NextResponse.json({ error: apiError.message }, { status: 500 });
     }
     
-    // 상세 오류 정보를 로그로 남김
-    console.error(`API 오류 응답: [${statusCode}] ${errorMessage}`);
-    
-    return NextResponse.json(
-      { error: errorMessage }, 
-      { status: statusCode }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 } 

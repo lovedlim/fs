@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { FinancialData } from '@/types/financial';
 
 interface FinancialAnalysisProps {
-  balanceSheet: any;
-  incomeStatement: any;
-  ratios: any;
+  balanceSheet: FinancialData['balanceSheet'];
+  incomeStatement: FinancialData['incomeStatement'];
+  ratios: FinancialData['ratios'];
 }
 
 // 재무제표 분석 컴포넌트
@@ -39,9 +40,9 @@ export default function FinancialAnalysis({ balanceSheet, incomeStatement, ratio
       
       const data = await response.json();
       setAnalysis(data.analysis);
-    } catch (err: any) {
-      console.error('분석 결과 가져오기 오류:', err);
-      setError(err.message || '분석 결과를 가져오는데 실패했습니다.');
+    } catch (error: unknown) {
+      console.error('분석 결과 가져오기 오류:', error);
+      setError(error instanceof Error ? error.message : '분석 결과를 가져오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }

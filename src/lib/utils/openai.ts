@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { BalanceSheet, IncomeStatement, Ratios } from '@/types/financial';
 
 // OpenAI API 설정
 const getOpenAIClient = () => {
@@ -14,7 +15,11 @@ const getOpenAIClient = () => {
 };
 
 // 재무제표 분석 함수
-export const analyzeFinancialStatements = async (balanceSheet: any, incomeStatement: any, ratios: any) => {
+export const analyzeFinancialStatements = async (
+  balanceSheet: BalanceSheet, 
+  incomeStatement: IncomeStatement, 
+  ratios: Ratios
+): Promise<string | null> => {
   try {
     // API 키가 없으면 처리하지 않음
     if (!process.env.OPENAI_API_KEY) {
@@ -86,7 +91,7 @@ export const analyzeFinancialStatements = async (balanceSheet: any, incomeStatem
     const analysis = response.choices[0].message?.content || "분석 결과를 가져올 수 없습니다.";
     return analysis;
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('재무제표 분석 오류:', error);
     return "재무제표 분석 중 오류가 발생했습니다.";
   }

@@ -6,17 +6,11 @@ import SearchBar from '@/components/SearchBar';
 import FinancialCharts from '@/components/FinancialCharts';
 import FinancialDetails from '@/components/FinancialDetails';
 import FinancialAnalysis from '@/components/FinancialAnalysis';
-
-interface Company {
-  id: number;
-  corp_code: string;
-  corp_name: string;
-  stock_code: string | null;
-}
+import { Company, FinancialData } from '@/types/financial';
 
 export default function Home() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [financialData, setFinancialData] = useState<any | null>(null);
+  const [financialData, setFinancialData] = useState<FinancialData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [year, setYear] = useState<string>("2024");
@@ -24,7 +18,7 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   
   // API 호출 최적화를 위한 캐시
-  const [dataCache, setDataCache] = useState<Record<string, any>>({});
+  const [dataCache, setDataCache] = useState<Record<string, FinancialData>>({});
   
   // 회사 선택 시 재무제표 데이터 가져오기
   const handleCompanySelect = useCallback(async (company: Company) => {
@@ -238,7 +232,7 @@ export default function Home() {
                 <div className="text-center p-8 text-gray-600">
                   <p className="font-medium text-lg mb-3">재미있는 재무제표 (재재) - AI 분석</p>
                   <p>AI 재무 분석 버튼을 클릭하면 재무제표에 대한 쉬운 설명을 제공합니다.</p>
-                  <p className="mt-2 text-sm text-gray-500">중학생도 이해할 수 있는 쉬운 언어로 설명합니다.</p>
+                  <p className="mt-2 text-sm text-gray-500">OpenAI API를 사용해 중학생도 이해할 수 있는 수준으로 설명합니다.</p>
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg text-left">
                     <p className="text-base text-gray-600 font-semibold">
                       AI 재무 분석 기능

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeFinancialStatements } from '@/lib/utils/openai';
+import { FinancialData } from '@/types/financial';
 
 export async function POST(request: NextRequest) {
   try {
     // 요청 본문에서 데이터 가져오기
     const body = await request.json();
-    const { balanceSheet, incomeStatement, ratios } = body;
+    const { balanceSheet, incomeStatement, ratios }: {
+      balanceSheet: FinancialData['balanceSheet'];
+      incomeStatement: FinancialData['incomeStatement'];
+      ratios: FinancialData['ratios'];
+    } = body;
     
     // 필수 데이터 확인
     if (!balanceSheet || !incomeStatement || !ratios) {
@@ -29,10 +34,10 @@ export async function POST(request: NextRequest) {
     
     // 분석 결과를 클라이언트에 반환
     return NextResponse.json({ analysis });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('재무제표 분석 API 오류:', error);
     return NextResponse.json(
-      { error: error.message || '재무제표 분석 중 오류가 발생했습니다.' },
+      { error: error instanceof Error ? error.message : '재무제표 분석 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }
