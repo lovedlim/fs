@@ -3,6 +3,7 @@ import axios from 'axios';
 import fs from 'fs';
 import { Op } from 'sequelize';
 import { Company as CompanyType } from '@/types/financial';
+import { DartRawItem, DartApiResponse } from '@/lib/utils/financialUtils';
 
 // 회사 검색 함수
 export const searchCompany = async (keyword: string) => {
@@ -57,7 +58,7 @@ export async function loadCompaniesFromFile(filePath: string): Promise<void> {
 }
 
 // DART API에서 재무제표 데이터 가져오기
-export const getFinancialStatements = async (corpCode: string, year: string, reportCode: string): Promise<any> => {
+export const getFinancialStatements = async (corpCode: string, year: string, reportCode: string): Promise<DartApiResponse> => {
   try {
     const apiKey = process.env.DART_API_KEY;
     if (!apiKey) {
@@ -85,11 +86,11 @@ export const getFinancialStatements = async (corpCode: string, year: string, rep
       }
       
       // 재무제표 종류 확인 (연결 재무제표인지 개별 재무제표인지)
-      const isConsolidated = checkIfConsolidated(response.data.list);
+      const isConsolidated = checkIfConsolidated(response.data.list as DartRawItem[]);
       
       // 재무제표 종류를 응답에 포함하여 반환
       return {
-        ...response.data,
+        list: response.data.list as DartRawItem[],
         isConsolidated
       };
     } else if (response.data.status === '013') {
@@ -112,26 +113,18 @@ export const getFinancialStatements = async (corpCode: string, year: string, rep
     } else {
       throw new Error(`API 오류(${response.data.status}): ${response.data.message}`);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 이미 재귀 호출하는 경우의 오류는 그대로 전달
-    if (error.message?.includes('자동으로 조회합니다')) {
+    if (error instanceof Error && error.message?.includes('자동으로 조회합니다')) {
       throw error;
     }
     
     // axios 오류와 일반 오류 구분
-    if (error.response) {
+    if (axios.isAxiosError(error)) {
       // API 서버에서 응답을 받았지만 2xx 상태 코드가 아님
-      console.error('API 응답 오류:', error.response.status, error.response.data);
-      throw new Error(`API 서버 오류 (${error.response.status}): ${JSON.stringify(error.response.data)}`);
-    } else if (error.request) {
-      // 요청이 전송되었지만 응답이 없음
-      console.error('API 요청 오류:', error.request);
-      throw new Error('API 서버에서 응답이 없습니다. 네트워크 연결이나 서버 상태를 확인해 주세요.');
-    } else if (error.code === 'ECONNABORTED') {
-      // 타임아웃 오류
-      console.error('API 요청 타임아웃:', error);
-      throw new Error('API 요청 시간이 초과되었습니다. 나중에 다시 시도해 주세요.');
-    } else {
+      console.error('API 응답 오류:', error.response?.status, error.response?.data);
+      throw new Error(`API 서버 오류 (${error.response?.status})`);
+    } else if (error instanceof Error) {
       // 그 외 오류
       console.error('재무제표 데이터 가져오기 오류:', error);
       throw error;
@@ -140,25 +133,26 @@ export const getFinancialStatements = async (corpCode: string, year: string, rep
 };
 
 // 재무제표가 연결 재무제표인지 확인하는 함수
-function checkIfConsolidated(data: any[]): boolean {
+function checkIfConsolidated(data: DartRawItem[]): boolean {
   // 연결 재무제표 여부를 확인할 수 있는 키워드들
   const consolidatedKeywords = ['연결', '연결재무상태표', '연결재무제표', '연결손익계산서'];
   
   // 재무제표 데이터 내의 첫 번째 항목에서 보고서 구분 정보 확인
   if (data && data.length > 0) {
     // fs_div 필드가 있는 경우 이를 통해 확인 (CFS: 연결재무제표, OFS: 개별재무제표)
-    if (data[0].fs_div) {
-      return data[0].fs_div === 'CFS';
+    const firstItem = data[0] as any; // Temporary any for potentially missing props
+    if (firstItem.fs_div) {
+      return firstItem.fs_div === 'CFS';
     }
     
     // fs_nm 필드를 통해 연결 재무제표 여부 확인
-    if (data[0].fs_nm) {
-      return consolidatedKeywords.some(keyword => data[0].fs_nm.includes(keyword));
+    if (firstItem.fs_nm) {
+      return consolidatedKeywords.some(keyword => firstItem.fs_nm.includes(keyword));
     }
     
     // sj_nm 필드를 통해 연결 재무제표 여부 확인
-    if (data[0].sj_nm) {
-      return consolidatedKeywords.some(keyword => data[0].sj_nm.includes(keyword));
+    if (firstItem.sj_nm) {
+      return consolidatedKeywords.some(keyword => firstItem.sj_nm.includes(keyword));
     }
     
     // 재무상태표 계정과목명에서 연결 재무제표 여부 확인
@@ -166,7 +160,7 @@ function checkIfConsolidated(data: any[]): boolean {
       item.account_nm === '자산총계' || 
       item.account_nm.includes('자산총계') ||
       item.account_nm.includes('자산 총계')
-    );
+    ) as any; // Temporary any
     
     if (totalAssetsItem && totalAssetsItem.account_detail) {
       return consolidatedKeywords.some(keyword => totalAssetsItem.account_detail.includes(keyword));

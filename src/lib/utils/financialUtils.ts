@@ -1,26 +1,29 @@
 // 재무제표 데이터 처리 유틸리티
 
 import {
-  BalanceSheet, IncomeStatement, FinancialRatios, 
-  // Import interfaces for raw data
-  BalanceSheetRawData, IncomeStatementRawData
+  BalanceSheet, IncomeStatement, FinancialRatios
 } from '@/types/financial';
 
-// Interface for individual item in DART API response list
-interface DartRawItem {
+// Export the DartRawItem interface
+export interface DartRawItem {
   account_nm: string;      // 계정명
   thstrm_dt?: string;       // 당기일자
   thstrm_amount?: string;   // 당기금액
   frmtrm_dt?: string;       // 전기일자
   frmtrm_amount?: string;   // 전기금액
-  // Add other potential fields if known
+  // Potentially add fs_div, fs_nm, sj_nm, account_detail here if needed
+  fs_div?: string; // 재무제표 구분 (CFS/OFS)
+  fs_nm?: string; // 재무제표명
+  sj_nm?: string; // 계정명 (상세)
+  account_detail?: string; // 계정상세
 }
 
-// Interface for the overall DART API response structure (simplified)
-interface DartApiResponse {
+// Export the DartApiResponse interface
+export interface DartApiResponse {
   list?: DartRawItem[];
   isConsolidated?: boolean;
-  // Add other potential top-level fields if known
+  status?: string; // Include status and message if they are part of the structure
+  message?: string;
 }
 
 // 단위 변환 (원 -> 억원/조원) 및 포맷팅
@@ -90,27 +93,30 @@ export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
       전기값: item.frmtrm_amount 
     })));
     
-    // 자산
-    let currentAssets = bsData.find((item: DartRawItem) => 
+    // Change let to const
+    const currentAssets = bsData.find((item: DartRawItem) => 
       item.account_nm === '유동자산' || 
       item.account_nm.includes('유동자산') ||
       item.account_nm.includes('유동 자산')
     );
-    let nonCurrentAssets = bsData.find((item: DartRawItem) => 
+    const nonCurrentAssets = bsData.find((item: DartRawItem) => 
       item.account_nm === '비유동자산' || 
       item.account_nm.includes('비유동자산') ||
       item.account_nm.includes('비유동 자산') ||
       item.account_nm.includes('비유동성자산')
     );
-    let totalAssets = bsData.find((item: DartRawItem) => 
+    const totalAssets = bsData.find((item: DartRawItem) => 
       item.account_nm === '자산총계' || 
       item.account_nm.includes('자산총계') ||
       item.account_nm.includes('자산 총계') ||
       item.account_nm.includes('자산합계')
     );
 
-    // 값을 못 찾은 경우 계산 시도
-    if (totalAssets && (!currentAssets || !nonCurrentAssets)) {
+    // Keep these as let as they might be reassigned by calculation
+    let calculatedCurrentAssets = currentAssets; 
+    let calculatedNonCurrentAssets = nonCurrentAssets;
+
+    if (totalAssets && (!calculatedCurrentAssets || !calculatedNonCurrentAssets)) {
       // 총자산 값이 있지만 유동/비유동 자산이 없는 경우, 세부 항목 찾기 시도
       const currentAssetsItems = bsData.filter((item: DartRawItem) => 
         item.account_nm.includes('현금') || 
@@ -133,7 +139,7 @@ export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
           return sum + amount;
         }, 0);
         
-        currentAssets = {
+        calculatedCurrentAssets = {
           account_nm: '유동자산(계산됨)',
           thstrm_amount: currentAssetsSum.toString(),
           frmtrm_amount: '0'
@@ -147,7 +153,7 @@ export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
           return sum + amount;
         }, 0);
         
-        nonCurrentAssets = {
+        calculatedNonCurrentAssets = {
           account_nm: '비유동자산(계산됨)',
           thstrm_amount: nonCurrentAssetsSum.toString(),
           frmtrm_amount: '0'
@@ -156,30 +162,33 @@ export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
     }
 
     // 자산 디버깅
-    console.log('유동자산: ', currentAssets?.account_nm, currentAssets?.thstrm_amount);
-    console.log('비유동자산: ', nonCurrentAssets?.account_nm, nonCurrentAssets?.thstrm_amount);
+    console.log('유동자산: ', calculatedCurrentAssets?.account_nm, calculatedCurrentAssets?.thstrm_amount);
+    console.log('비유동자산: ', calculatedNonCurrentAssets?.account_nm, calculatedNonCurrentAssets?.thstrm_amount);
     console.log('총자산: ', totalAssets?.account_nm, totalAssets?.thstrm_amount);
 
     // 부채
-    let currentLiabilities = bsData.find((item: DartRawItem) => 
+    const currentLiabilities = bsData.find((item: DartRawItem) => 
       item.account_nm === '유동부채' || 
       item.account_nm.includes('유동부채') ||
       item.account_nm.includes('유동 부채')
     );
-    let nonCurrentLiabilities = bsData.find((item: DartRawItem) => 
+    const nonCurrentLiabilities = bsData.find((item: DartRawItem) => 
       item.account_nm.includes('비유동부채') || 
       item.account_nm.includes('비유동 부채') ||
       item.account_nm.includes('비유동성부채')
     );
-    let totalLiabilities = bsData.find((item: DartRawItem) => 
+    const totalLiabilities = bsData.find((item: DartRawItem) => 
       item.account_nm === '부채총계' || 
       item.account_nm.includes('부채총계') ||
       item.account_nm.includes('부채 총계') ||
       item.account_nm.includes('부채합계')
     );
 
-    // 값을 못 찾은 경우 계산 시도 (부채)
-    if (totalLiabilities && (!currentLiabilities || !nonCurrentLiabilities)) {
+    // Use let for variables that might be recalculated
+    let calculatedCurrentLiabilities = currentLiabilities;
+    let calculatedNonCurrentLiabilities = nonCurrentLiabilities;
+
+    if (totalLiabilities && (!calculatedCurrentLiabilities || !calculatedNonCurrentLiabilities)) {
       // 총부채 값이 있지만 유동/비유동 부채가 없는 경우, 세부 항목 찾기 시도
       const currentLiabilitiesItems = bsData.filter((item: DartRawItem) => 
         item.account_nm.includes('단기') || 
@@ -200,7 +209,7 @@ export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
           return sum + amount;
         }, 0);
         
-        currentLiabilities = {
+        calculatedCurrentLiabilities = {
           account_nm: '유동부채(계산됨)',
           thstrm_amount: currentLiabilitiesSum.toString(),
           frmtrm_amount: '0'
@@ -214,7 +223,7 @@ export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
           return sum + amount;
         }, 0);
         
-        nonCurrentLiabilities = {
+        calculatedNonCurrentLiabilities = {
           account_nm: '비유동부채(계산됨)',
           thstrm_amount: nonCurrentLiabilitiesSum.toString(),
           frmtrm_amount: '0'
@@ -223,19 +232,19 @@ export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
     }
 
     // 부채 디버깅
-    console.log('유동부채: ', currentLiabilities?.account_nm, currentLiabilities?.thstrm_amount);
-    console.log('비유동부채: ', nonCurrentLiabilities?.account_nm, nonCurrentLiabilities?.thstrm_amount);
+    console.log('유동부채: ', calculatedCurrentLiabilities?.account_nm, calculatedCurrentLiabilities?.thstrm_amount);
+    console.log('비유동부채: ', calculatedNonCurrentLiabilities?.account_nm, calculatedNonCurrentLiabilities?.thstrm_amount);
     console.log('총부채: ', totalLiabilities?.account_nm, totalLiabilities?.thstrm_amount);
 
     // 자본
-    let totalEquity = bsData.find((item: DartRawItem) => 
+    const initialTotalEquity = bsData.find((item: DartRawItem) => 
       item.account_nm === '자본총계' || 
       item.account_nm.includes('자본총계') ||
       item.account_nm.includes('자본 총계') ||
       item.account_nm.includes('자본합계')
     );
+    let totalEquity = initialTotalEquity; // Use let as it might be calculated
 
-    // 값을 못 찾은 경우 계산 시도 (자본)
     if (!totalEquity && totalAssets && totalLiabilities) {
       // 자산총계 - 부채총계 = 자본총계 공식 적용
       const assetsValue = Number(totalAssets.thstrm_amount?.replace(/,/g, '') || '0');
@@ -272,31 +281,31 @@ export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
         },
         isConsolidated: isConsolidated, // 연결 재무제표 여부 추가
         assets: {
-          rawCurrent: currentAssets?.thstrm_amount || '0',
-          rawNonCurrent: nonCurrentAssets?.thstrm_amount || '0',
+          rawCurrent: calculatedCurrentAssets?.thstrm_amount || '0',
+          rawNonCurrent: calculatedNonCurrentAssets?.thstrm_amount || '0',
           rawTotal: totalAssets?.thstrm_amount || '0',
-          prevRawCurrent: currentAssets?.frmtrm_amount || '0',
-          prevRawNonCurrent: nonCurrentAssets?.frmtrm_amount || '0',
+          prevRawCurrent: calculatedCurrentAssets?.frmtrm_amount || '0',
+          prevRawNonCurrent: calculatedNonCurrentAssets?.frmtrm_amount || '0',
           prevRawTotal: totalAssets?.frmtrm_amount || '0',
-          current: convertToUnit(currentAssets?.thstrm_amount || '0'),
-          nonCurrent: convertToUnit(nonCurrentAssets?.thstrm_amount || '0'),
+          current: convertToUnit(calculatedCurrentAssets?.thstrm_amount || '0'),
+          nonCurrent: convertToUnit(calculatedNonCurrentAssets?.thstrm_amount || '0'),
           total: convertToUnit(totalAssets?.thstrm_amount || '0'),
-          prevCurrent: convertToUnit(currentAssets?.frmtrm_amount || '0'),
-          prevNonCurrent: convertToUnit(nonCurrentAssets?.frmtrm_amount || '0'),
+          prevCurrent: convertToUnit(calculatedCurrentAssets?.frmtrm_amount || '0'),
+          prevNonCurrent: convertToUnit(calculatedNonCurrentAssets?.frmtrm_amount || '0'),
           prevTotal: convertToUnit(totalAssets?.frmtrm_amount || '0'),
         },
         liabilities: {
-          rawCurrent: currentLiabilities?.thstrm_amount || '0',
-          rawNonCurrent: nonCurrentLiabilities?.thstrm_amount || '0',
+          rawCurrent: calculatedCurrentLiabilities?.thstrm_amount || '0',
+          rawNonCurrent: calculatedNonCurrentLiabilities?.thstrm_amount || '0',
           rawTotal: totalLiabilities?.thstrm_amount || '0',
-          prevRawCurrent: currentLiabilities?.frmtrm_amount || '0',
-          prevRawNonCurrent: nonCurrentLiabilities?.frmtrm_amount || '0',
+          prevRawCurrent: calculatedCurrentLiabilities?.frmtrm_amount || '0',
+          prevRawNonCurrent: calculatedNonCurrentLiabilities?.frmtrm_amount || '0',
           prevRawTotal: totalLiabilities?.frmtrm_amount || '0',
-          current: convertToUnit(currentLiabilities?.thstrm_amount || '0'),
-          nonCurrent: convertToUnit(nonCurrentLiabilities?.thstrm_amount || '0'),
+          current: convertToUnit(calculatedCurrentLiabilities?.thstrm_amount || '0'),
+          nonCurrent: convertToUnit(calculatedNonCurrentLiabilities?.thstrm_amount || '0'),
           total: convertToUnit(totalLiabilities?.thstrm_amount || '0'),
-          prevCurrent: convertToUnit(currentLiabilities?.frmtrm_amount || '0'),
-          prevNonCurrent: convertToUnit(nonCurrentLiabilities?.frmtrm_amount || '0'),
+          prevCurrent: convertToUnit(calculatedCurrentLiabilities?.frmtrm_amount || '0'),
+          prevNonCurrent: convertToUnit(calculatedNonCurrentLiabilities?.frmtrm_amount || '0'),
           prevTotal: convertToUnit(totalLiabilities?.frmtrm_amount || '0'),
         },
         equity: {
@@ -354,8 +363,8 @@ export function processIncomeStatement(data: DartApiResponse): IncomeStatement {
       전기값: item.frmtrm_amount 
     })));
     
-    // 필요한 계정 찾기
-    let revenue = isData.find((item: DartRawItem) => 
+    // Change initial finds to const
+    const initialRevenue = isData.find((item: DartRawItem) => 
       item.account_nm === '매출액' || 
       item.account_nm.includes('매출액') || 
       item.account_nm.includes('영업수익') ||
@@ -363,14 +372,14 @@ export function processIncomeStatement(data: DartApiResponse): IncomeStatement {
       item.account_nm.includes('수익(매출액)')
     );
     
-    let operatingProfit = isData.find((item: DartRawItem) => 
+    const initialOperatingProfit = isData.find((item: DartRawItem) => 
       item.account_nm === '영업이익' || 
       item.account_nm.includes('영업이익') || 
       item.account_nm.includes('영업 이익') ||
       item.account_nm.includes('영업이익(손실)')
     );
     
-    let netIncome = isData.find((item: DartRawItem) => 
+    const initialNetIncome = isData.find((item: DartRawItem) => 
       item.account_nm === '당기순이익' || 
       item.account_nm.includes('당기순이익') || 
       item.account_nm.includes('당기 순이익') ||
@@ -378,7 +387,11 @@ export function processIncomeStatement(data: DartApiResponse): IncomeStatement {
       item.account_nm.includes('당기순손익')
     );
     
-    // 값을 못 찾은 경우 계산 시도
+    // Use let for variables that might be recalculated
+    let revenue = initialRevenue;
+    let operatingProfit = initialOperatingProfit;
+    let netIncome = initialNetIncome;
+    
     if (!revenue) {
       const revenueItems = isData.filter((item: DartRawItem) => 
         item.account_nm.includes('매출') || 
@@ -419,7 +432,6 @@ export function processIncomeStatement(data: DartApiResponse): IncomeStatement {
       }
     }
     
-    // 당기순이익을 찾지 못한 경우, 관련 항목 찾기
     if (!netIncome) {
       const netItems = isData.filter((item: DartRawItem) => 
         item.account_nm.includes('순이익') || 

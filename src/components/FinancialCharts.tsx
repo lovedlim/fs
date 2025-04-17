@@ -34,9 +34,6 @@ ChartJS.register(
   RadialLinearScale
 );
 
-// Define more specific chart types
-type ChartType = 'bar' | 'pie' | 'line' | 'radar';
-
 interface ChartComponentProps { 
   // Disable any rule for complex Chart.js types
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
