@@ -134,39 +134,32 @@ export const getFinancialStatements = async (corpCode: string, year: string, rep
 
 // 재무제표가 연결 재무제표인지 확인하는 함수
 function checkIfConsolidated(data: DartRawItem[]): boolean {
-  // 연결 재무제표 여부를 확인할 수 있는 키워드들
   const consolidatedKeywords = ['연결', '연결재무상태표', '연결재무제표', '연결손익계산서'];
   
-  // 재무제표 데이터 내의 첫 번째 항목에서 보고서 구분 정보 확인
   if (data && data.length > 0) {
-    // fs_div 필드가 있는 경우 이를 통해 확인 (CFS: 연결재무제표, OFS: 개별재무제표)
-    const firstItem = data[0] as any; // Temporary any for potentially missing props
+    // Remove 'as any' - DartRawItem now includes optional properties
+    const firstItem = data[0]; 
+    
+    // Access optional properties safely
     if (firstItem.fs_div) {
       return firstItem.fs_div === 'CFS';
     }
-    
-    // fs_nm 필드를 통해 연결 재무제표 여부 확인
     if (firstItem.fs_nm) {
-      return consolidatedKeywords.some(keyword => firstItem.fs_nm.includes(keyword));
+      return consolidatedKeywords.some(keyword => firstItem.fs_nm?.includes(keyword)); // Add optional chaining for safety
     }
-    
-    // sj_nm 필드를 통해 연결 재무제표 여부 확인
     if (firstItem.sj_nm) {
-      return consolidatedKeywords.some(keyword => firstItem.sj_nm.includes(keyword));
+      return consolidatedKeywords.some(keyword => firstItem.sj_nm?.includes(keyword)); // Add optional chaining for safety
     }
     
-    // 재무상태표 계정과목명에서 연결 재무제표 여부 확인
     const totalAssetsItem = data.find(item => 
       item.account_nm === '자산총계' || 
       item.account_nm.includes('자산총계') ||
       item.account_nm.includes('자산 총계')
-    ) as any; // Temporary any
+    ); // Remove 'as any'
     
     if (totalAssetsItem && totalAssetsItem.account_detail) {
-      return consolidatedKeywords.some(keyword => totalAssetsItem.account_detail.includes(keyword));
+      return consolidatedKeywords.some(keyword => totalAssetsItem.account_detail?.includes(keyword)); // Add optional chaining
     }
   }
-  
-  // 기본적으로는 개별 재무제표로 간주
   return false;
 } 
