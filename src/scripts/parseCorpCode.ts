@@ -4,12 +4,31 @@ import { parseString } from 'xml2js';
 import { syncDatabase } from '../lib/db/models';
 import { loadCompaniesFromFile } from '../lib/services/companyService';
 
+// Define interface for the parsed company data
+interface CompanyData {
+  corp_code: string;
+  corp_name: string;
+  stock_code: string | null;
+}
+
+// Define a simplified interface for the xml2js result structure
+interface XmlListItem {
+  corp_code: string[];
+  corp_name: string[];
+  stock_code: string[];
+}
+interface XmlResult {
+  result: {
+    list: XmlListItem[];
+  };
+}
+
 // XML 파일 파싱 함수
-async function parseCorpCodeXML(xmlFilePath: string): Promise<any[]> {
+async function parseCorpCodeXML(xmlFilePath: string): Promise<CompanyData[]> {
   return new Promise((resolve, reject) => {
     const xmlData = fs.readFileSync(xmlFilePath, 'utf-8');
     
-    parseString(xmlData, (err: Error | null, result: any) => {
+    parseString(xmlData, (err: Error | null, result: XmlResult) => {
       if (err) {
         reject(err);
         return;
@@ -17,11 +36,11 @@ async function parseCorpCodeXML(xmlFilePath: string): Promise<any[]> {
       
       try {
         // 회사 목록 추출
-        const companies = result.result.list.map((item: any) => {
+        const companies: CompanyData[] = result.result.list.map((item: XmlListItem) => {
           return {
             corp_code: item.corp_code[0],
             corp_name: item.corp_name[0],
-            stock_code: item.stock_code[0] !== ' ' ? item.stock_code[0] : null
+            stock_code: item.stock_code[0]?.trim() ? item.stock_code[0].trim() : null
           };
         });
         

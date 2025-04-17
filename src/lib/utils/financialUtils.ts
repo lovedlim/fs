@@ -1,6 +1,27 @@
 // 재무제표 데이터 처리 유틸리티
 
-import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/lib/types/financial';
+import {
+  BalanceSheet, IncomeStatement, FinancialRatios, 
+  // Import interfaces for raw data
+  BalanceSheetRawData, IncomeStatementRawData
+} from '@/types/financial';
+
+// Interface for individual item in DART API response list
+interface DartRawItem {
+  account_nm: string;      // 계정명
+  thstrm_dt?: string;       // 당기일자
+  thstrm_amount?: string;   // 당기금액
+  frmtrm_dt?: string;       // 전기일자
+  frmtrm_amount?: string;   // 전기금액
+  // Add other potential fields if known
+}
+
+// Interface for the overall DART API response structure (simplified)
+interface DartApiResponse {
+  list?: DartRawItem[];
+  isConsolidated?: boolean;
+  // Add other potential top-level fields if known
+}
 
 // 단위 변환 (원 -> 억원/조원) 및 포맷팅
 export function formatAmount(amount: string): string {
@@ -58,35 +79,30 @@ export function convertToUnit(amount: string): number {
 }
 
 // 재무상태표 데이터 가공
-export function processBalanceSheet(data: any): BalanceSheet {
+export function processBalanceSheet(data: DartApiResponse): BalanceSheet {
   try {
-    if (!data || !data.list || !Array.isArray(data.list)) {
-      console.error('유효하지 않은 재무상태표 데이터:', data);
-      return createEmptyBalanceSheet();
-    }
-    
-    const bsData = data.list;
+    const bsData: DartRawItem[] = data.list || [];
     
     // 디버깅: 계정명 확인
-    console.log('계정 목록:', bsData.map((item: any) => ({ 
+    console.log('계정 목록:', bsData.map((item: DartRawItem) => ({ 
       계정명: item.account_nm, 
       당기값: item.thstrm_amount, 
       전기값: item.frmtrm_amount 
     })));
     
     // 자산
-    let currentAssets = bsData.find((item: any) => 
+    let currentAssets = bsData.find((item: DartRawItem) => 
       item.account_nm === '유동자산' || 
       item.account_nm.includes('유동자산') ||
       item.account_nm.includes('유동 자산')
     );
-    let nonCurrentAssets = bsData.find((item: any) => 
+    let nonCurrentAssets = bsData.find((item: DartRawItem) => 
       item.account_nm === '비유동자산' || 
       item.account_nm.includes('비유동자산') ||
       item.account_nm.includes('비유동 자산') ||
       item.account_nm.includes('비유동성자산')
     );
-    let totalAssets = bsData.find((item: any) => 
+    let totalAssets = bsData.find((item: DartRawItem) => 
       item.account_nm === '자산총계' || 
       item.account_nm.includes('자산총계') ||
       item.account_nm.includes('자산 총계') ||
@@ -96,14 +112,14 @@ export function processBalanceSheet(data: any): BalanceSheet {
     // 값을 못 찾은 경우 계산 시도
     if (totalAssets && (!currentAssets || !nonCurrentAssets)) {
       // 총자산 값이 있지만 유동/비유동 자산이 없는 경우, 세부 항목 찾기 시도
-      const currentAssetsItems = bsData.filter((item: any) => 
+      const currentAssetsItems = bsData.filter((item: DartRawItem) => 
         item.account_nm.includes('현금') || 
         item.account_nm.includes('단기') || 
         item.account_nm.includes('매출채권') ||
         item.account_nm.includes('재고자산')
       );
       
-      const nonCurrentAssetsItems = bsData.filter((item: any) => 
+      const nonCurrentAssetsItems = bsData.filter((item: DartRawItem) => 
         item.account_nm.includes('장기') || 
         item.account_nm.includes('투자') || 
         item.account_nm.includes('유형자산') ||
@@ -112,7 +128,7 @@ export function processBalanceSheet(data: any): BalanceSheet {
       
       if (currentAssetsItems.length > 0) {
         // 유동자산 항목들의 합계 계산
-        const currentAssetsSum = currentAssetsItems.reduce((sum: number, item: any) => {
+        const currentAssetsSum = currentAssetsItems.reduce((sum: number, item: DartRawItem) => {
           const amount = Number(item.thstrm_amount?.replace(/,/g, '') || '0');
           return sum + amount;
         }, 0);
@@ -126,7 +142,7 @@ export function processBalanceSheet(data: any): BalanceSheet {
       
       if (nonCurrentAssetsItems.length > 0) {
         // 비유동자산 항목들의 합계 계산
-        const nonCurrentAssetsSum = nonCurrentAssetsItems.reduce((sum: number, item: any) => {
+        const nonCurrentAssetsSum = nonCurrentAssetsItems.reduce((sum: number, item: DartRawItem) => {
           const amount = Number(item.thstrm_amount?.replace(/,/g, '') || '0');
           return sum + amount;
         }, 0);
@@ -145,17 +161,17 @@ export function processBalanceSheet(data: any): BalanceSheet {
     console.log('총자산: ', totalAssets?.account_nm, totalAssets?.thstrm_amount);
 
     // 부채
-    let currentLiabilities = bsData.find((item: any) => 
+    let currentLiabilities = bsData.find((item: DartRawItem) => 
       item.account_nm === '유동부채' || 
       item.account_nm.includes('유동부채') ||
       item.account_nm.includes('유동 부채')
     );
-    let nonCurrentLiabilities = bsData.find((item: any) => 
+    let nonCurrentLiabilities = bsData.find((item: DartRawItem) => 
       item.account_nm.includes('비유동부채') || 
       item.account_nm.includes('비유동 부채') ||
       item.account_nm.includes('비유동성부채')
     );
-    let totalLiabilities = bsData.find((item: any) => 
+    let totalLiabilities = bsData.find((item: DartRawItem) => 
       item.account_nm === '부채총계' || 
       item.account_nm.includes('부채총계') ||
       item.account_nm.includes('부채 총계') ||
@@ -165,13 +181,13 @@ export function processBalanceSheet(data: any): BalanceSheet {
     // 값을 못 찾은 경우 계산 시도 (부채)
     if (totalLiabilities && (!currentLiabilities || !nonCurrentLiabilities)) {
       // 총부채 값이 있지만 유동/비유동 부채가 없는 경우, 세부 항목 찾기 시도
-      const currentLiabilitiesItems = bsData.filter((item: any) => 
+      const currentLiabilitiesItems = bsData.filter((item: DartRawItem) => 
         item.account_nm.includes('단기') || 
         item.account_nm.includes('매입채무') || 
         item.account_nm.includes('미지급')
       );
       
-      const nonCurrentLiabilitiesItems = bsData.filter((item: any) => 
+      const nonCurrentLiabilitiesItems = bsData.filter((item: DartRawItem) => 
         item.account_nm.includes('장기') || 
         item.account_nm.includes('사채') || 
         item.account_nm.includes('충당부채')
@@ -179,7 +195,7 @@ export function processBalanceSheet(data: any): BalanceSheet {
       
       if (currentLiabilitiesItems.length > 0) {
         // 유동부채 항목들의 합계 계산
-        const currentLiabilitiesSum = currentLiabilitiesItems.reduce((sum: number, item: any) => {
+        const currentLiabilitiesSum = currentLiabilitiesItems.reduce((sum: number, item: DartRawItem) => {
           const amount = Number(item.thstrm_amount?.replace(/,/g, '') || '0');
           return sum + amount;
         }, 0);
@@ -193,7 +209,7 @@ export function processBalanceSheet(data: any): BalanceSheet {
       
       if (nonCurrentLiabilitiesItems.length > 0) {
         // 비유동부채 항목들의 합계 계산
-        const nonCurrentLiabilitiesSum = nonCurrentLiabilitiesItems.reduce((sum: number, item: any) => {
+        const nonCurrentLiabilitiesSum = nonCurrentLiabilitiesItems.reduce((sum: number, item: DartRawItem) => {
           const amount = Number(item.thstrm_amount?.replace(/,/g, '') || '0');
           return sum + amount;
         }, 0);
@@ -212,7 +228,7 @@ export function processBalanceSheet(data: any): BalanceSheet {
     console.log('총부채: ', totalLiabilities?.account_nm, totalLiabilities?.thstrm_amount);
 
     // 자본
-    let totalEquity = bsData.find((item: any) => 
+    let totalEquity = bsData.find((item: DartRawItem) => 
       item.account_nm === '자본총계' || 
       item.account_nm.includes('자본총계') ||
       item.account_nm.includes('자본 총계') ||
@@ -236,8 +252,8 @@ export function processBalanceSheet(data: any): BalanceSheet {
     // 자본 디버깅
     console.log('자본총계: ', totalEquity?.account_nm, totalEquity?.thstrm_amount);
 
-    const currentYear = data.list[0]?.thstrm_dt || '당기'; // 당기
-    const previousYear = data.list[0]?.frmtrm_dt || '전기'; // 전기
+    const currentYear = bsData[0]?.thstrm_dt || '당기'; // 당기
+    const previousYear = bsData[0]?.frmtrm_dt || '전기'; // 전기
     
     // 연결 재무제표 여부 확인
     const isConsolidated = data.isConsolidated || false;
@@ -327,24 +343,19 @@ export function processBalanceSheet(data: any): BalanceSheet {
 }
 
 // 손익계산서 데이터 가공
-export function processIncomeStatement(data: any): IncomeStatement {
+export function processIncomeStatement(data: DartApiResponse): IncomeStatement {
   try {
-    if (!data || !data.list || !Array.isArray(data.list)) {
-      console.error('유효하지 않은 손익계산서 데이터:', data);
-      return createEmptyIncomeStatement();
-    }
-    
-    const isData = data.list;
+    const isData: DartRawItem[] = data.list || [];
     
     // 디버깅: 계정명 확인
-    console.log('손익계산서 계정 목록:', isData.map((item: any) => ({ 
+    console.log('손익계산서 계정 목록:', isData.map((item: DartRawItem) => ({ 
       계정명: item.account_nm, 
       당기값: item.thstrm_amount, 
       전기값: item.frmtrm_amount 
     })));
     
     // 필요한 계정 찾기
-    let revenue = isData.find((item: any) => 
+    let revenue = isData.find((item: DartRawItem) => 
       item.account_nm === '매출액' || 
       item.account_nm.includes('매출액') || 
       item.account_nm.includes('영업수익') ||
@@ -352,14 +363,14 @@ export function processIncomeStatement(data: any): IncomeStatement {
       item.account_nm.includes('수익(매출액)')
     );
     
-    let operatingProfit = isData.find((item: any) => 
+    let operatingProfit = isData.find((item: DartRawItem) => 
       item.account_nm === '영업이익' || 
       item.account_nm.includes('영업이익') || 
       item.account_nm.includes('영업 이익') ||
       item.account_nm.includes('영업이익(손실)')
     );
     
-    let netIncome = isData.find((item: any) => 
+    let netIncome = isData.find((item: DartRawItem) => 
       item.account_nm === '당기순이익' || 
       item.account_nm.includes('당기순이익') || 
       item.account_nm.includes('당기 순이익') ||
@@ -369,7 +380,7 @@ export function processIncomeStatement(data: any): IncomeStatement {
     
     // 값을 못 찾은 경우 계산 시도
     if (!revenue) {
-      const revenueItems = isData.filter((item: any) => 
+      const revenueItems = isData.filter((item: DartRawItem) => 
         item.account_nm.includes('매출') || 
         item.account_nm.includes('수익')
       );
@@ -382,13 +393,13 @@ export function processIncomeStatement(data: any): IncomeStatement {
     
     if (!operatingProfit) {
       // 매출총이익 찾기 시도
-      const grossProfit = isData.find((item: any) => 
+      const grossProfit = isData.find((item: DartRawItem) => 
         item.account_nm.includes('매출총이익') || 
         item.account_nm.includes('매출총손익')
       );
       
       // 판관비 찾기 시도
-      const expenses = isData.find((item: any) => 
+      const expenses = isData.find((item: DartRawItem) => 
         item.account_nm.includes('판매비와관리비') || 
         item.account_nm.includes('판매비') ||
         item.account_nm.includes('관리비')
@@ -410,7 +421,7 @@ export function processIncomeStatement(data: any): IncomeStatement {
     
     // 당기순이익을 찾지 못한 경우, 관련 항목 찾기
     if (!netIncome) {
-      const netItems = isData.filter((item: any) => 
+      const netItems = isData.filter((item: DartRawItem) => 
         item.account_nm.includes('순이익') || 
         item.account_nm.includes('순손익') ||
         item.account_nm.includes('당기') && (item.account_nm.includes('이익') || item.account_nm.includes('손익'))
@@ -422,8 +433,8 @@ export function processIncomeStatement(data: any): IncomeStatement {
       }
     }
     
-    const currentPeriod = data.list[0]?.thstrm_dt || '당기'; // 당기
-    const previousPeriod = data.list[0]?.frmtrm_dt || '전기'; // 전기
+    const currentPeriod = isData[0]?.thstrm_dt || '당기'; // 당기
+    const previousPeriod = isData[0]?.frmtrm_dt || '전기'; // 전기
 
     // 디버깅
     console.log('매출액: ', revenue?.account_nm, revenue?.thstrm_amount);

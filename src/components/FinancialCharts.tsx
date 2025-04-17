@@ -13,11 +13,12 @@ import {
   PointElement,
   RadialLinearScale,
   ChartData,
-  ChartOptions
+  ChartOptions,
+  TooltipItem
 } from 'chart.js';
 import { Bar, Pie, Line, Radar } from 'react-chartjs-2';
 import { formatAmount } from '@/lib/utils/financialUtils';
-import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/lib/types/financial';
+import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/types/financial';
 
 // Chart.js 등록
 ChartJS.register(
@@ -59,28 +60,17 @@ const ChartComponent = ({ data, title, type, height = 300, options = {} }: Chart
       },
       tooltip: {
         callbacks: {
-          label: function(context: any) {
+          label: function(context: TooltipItem<'bar' | 'pie' | 'line' | 'radar'>) {
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
             }
-            if (context.parsed.y !== undefined) {
-              // 숫자 포맷팅 (바 차트, 선 차트)
-              if (type === 'bar' || type === 'line') {
-                label += context.parsed.y.toFixed(2);
-                if (title.includes('억원')) {
-                  label += ' 억원';
-                } else if (title.includes('%')) {
-                  label += '%';
-                }
-              } else {
-                label += context.parsed.toFixed(2);
-              }
-            } else if (context.parsed !== undefined) {
-              // 파이 차트
-              label += context.parsed.toFixed(2);
-              if (title.includes('억원')) {
+            if (context.formattedValue) {
+              label += context.formattedValue;
+              if (title.includes('억원') && type !== 'pie') {
                 label += ' 억원';
+              } else if (title.includes('%') && type !== 'pie') {
+                label += '%';
               }
             }
             return label;

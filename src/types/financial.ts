@@ -4,7 +4,7 @@
 export interface FinancialData {
   balanceSheet: BalanceSheet;
   incomeStatement: IncomeStatement;
-  ratios: Ratios;
+  ratios: FinancialRatios;
 }
 
 export interface BalanceSheet {
@@ -25,6 +25,7 @@ export interface BalanceSheetRawData {
     prevNonCurrent: number;
     prevRawCurrent: string;
     prevRawNonCurrent: string;
+    prevRawTotal: string;
   };
   liabilities: {
     rawTotal: string;
@@ -38,11 +39,13 @@ export interface BalanceSheetRawData {
     prevNonCurrent: number;
     prevRawCurrent: string;
     prevRawNonCurrent: string;
+    prevRawTotal: string;
   };
   equity: {
     rawTotal: string;
     total: number;
     prevTotal: number;
+    prevRawTotal: string;
   };
   years: {
     current: string;
@@ -70,7 +73,7 @@ export interface IncomeStatementRawData {
   };
 }
 
-export interface Ratios {
+export interface FinancialRatios {
   data: {
     currentRatio: string;
     debtToEquityRatio: string;
@@ -84,6 +87,7 @@ export interface Ratios {
     operatingProfitGrowth: number;
     netIncomeGrowth: number;
   };
+  chartData: ChartData;
 }
 
 export interface ChartData {

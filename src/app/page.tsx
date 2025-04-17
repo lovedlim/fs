@@ -41,7 +41,7 @@ export default function Home() {
         return;
       }
       
-      const response = await axios.get(`/api/financial`, {
+      const response = await axios.get<FinancialData>('/api/financial', {
         params: {
           corp_code: company.corp_code,
           year: year,
@@ -49,8 +49,7 @@ export default function Home() {
         }
       });
       
-      // 응답 데이터가 없거나 형식이 맞지 않으면 오류 처리
-      if (!response.data || !response.data.balanceSheet || !response.data.incomeStatement) {
+      if (!response.data || !response.data.balanceSheet || !response.data.incomeStatement || !response.data.ratios) {
         throw new Error('데이터 형식이 올바르지 않습니다');
       }
       
@@ -65,24 +64,24 @@ export default function Home() {
       }));
       
       setFinancialData(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('재무제표 가져오기 오류:', err);
       
-      // 오류 메시지 상세화
+      // Type check before accessing properties
       let errorMessage = '재무제표 데이터를 가져오는 중 오류가 발생했습니다';
-      
-      if (err.response) {
-        // 서버 응답이 있는 경우 (HTTP 상태 코드가 2xx가 아닌 경우)
-        const statusCode = err.response.status;
-        const serverError = err.response.data?.error || '알 수 없는 서버 오류';
-        errorMessage = `서버 오류 (${statusCode}): ${serverError}`;
-        console.log('서버 응답 오류 데이터:', err.response.data);
-      } else if (err.request) {
-        // 요청은 보냈지만 응답을 받지 못한 경우
-        errorMessage = '서버에서 응답이 없습니다. 네트워크 연결을 확인해 주세요.';
-      } else if (err.message) {
-        // 요청 설정 중 오류가 발생한 경우
-        errorMessage = err.message;
+      if (axios.isAxiosError(err)) { // Check if it's an Axios error
+        if (err.response) {
+          const statusCode = err.response.status;
+          const serverError = err.response.data?.error || '알 수 없는 서버 오류';
+          errorMessage = `서버 오류 (${statusCode}): ${serverError}`;
+          console.log('서버 응답 오류 데이터:', err.response.data);
+        } else if (err.request) {
+          errorMessage = '서버에서 응답이 없습니다. 네트워크 연결을 확인해 주세요.';
+        } else {
+          errorMessage = err.message; 
+        }
+      } else if (err instanceof Error) { // Check if it's a standard Error
+         errorMessage = err.message;
       }
       
       setError(errorMessage);
@@ -104,11 +103,13 @@ export default function Home() {
 
   // AI를 통한 재무제표 분석 요청
   const getAiAnalysis = async () => {
-    if (!financialData) return;
+    if (!financialData || !selectedCompany) return;
     
     setAiLoading(true);
+    setError(null);
+    setAiAnalysis(null);
     try {
-      const response = await axios.post('/api/ai-analysis', {
+      const response = await axios.post<{ analysis: string }>('/api/ai-analysis', {
         company: selectedCompany,
         year: year,
         balanceSheet: financialData.balanceSheet,
@@ -117,9 +118,16 @@ export default function Home() {
       });
       
       setAiAnalysis(response.data.analysis);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('AI 분석 오류:', err);
-      setAiAnalysis('죄송합니다. AI 분석 중 오류가 발생했습니다. OpenAI API 키가 제대로 설정되어 있는지 확인해 주세요.');
+      let errorMessage = 'AI 분석 중 오류가 발생했습니다.';
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      setAiAnalysis(null);
     } finally {
       setAiLoading(false);
     }
@@ -172,9 +180,6 @@ export default function Home() {
         
         {!loading && !error && financialData && (
           <>
-            {(() => { // Immediately invoked function expression to allow logging
-              return null; // IIFE must return something renderable (or null)
-            })()}
             <FinancialCharts 
               balanceSheet={financialData.balanceSheet} 
               incomeStatement={financialData.incomeStatement}

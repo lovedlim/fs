@@ -1,7 +1,7 @@
 'use client';
 
 import { formatAmount } from '@/lib/utils/financialUtils';
-import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/lib/types/financial';
+import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/types/financial';
 
 interface FinancialDetailsProps {
   balanceSheet: BalanceSheet | null;

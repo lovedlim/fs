@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { FinancialData } from '@/types/financial';
+import { FinancialData, BalanceSheet, IncomeStatement, FinancialRatios } from '@/types/financial';
 import ReactMarkdown from 'react-markdown';
 
 interface FinancialAnalysisProps {
-  balanceSheet: FinancialData['balanceSheet'];
-  incomeStatement: FinancialData['incomeStatement'];
-  ratios: FinancialData['ratios'];
+  balanceSheet: BalanceSheet | null;
+  incomeStatement: IncomeStatement | null;
+  ratios: FinancialRatios | null;
 }
 
 // 재무제표 분석 컴포넌트
@@ -21,22 +21,29 @@ export default function FinancialAnalysis({ balanceSheet, incomeStatement, ratio
     setLoading(true);
     setError(null);
     
+    // Ensure data exists before fetching
+    if (!balanceSheet || !incomeStatement || !ratios) {
+        setError('분석에 필요한 재무 데이터가 부족합니다.');
+        setLoading(false);
+        return;
+    }
+    
     try {
-      // 백엔드 API를 통해 분석 결과 가져오기
-      const response = await fetch('/api/analyze', {
+      const response = await fetch('/api/analyze', { // Assuming this is the correct endpoint
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          balanceSheet,
-          incomeStatement,
-          ratios
+        body: JSON.stringify({ // Send only the data needed by the API
+          balanceSheet, 
+          incomeStatement, 
+          ratios 
         }),
       });
       
       if (!response.ok) {
-        throw new Error('분석 결과를 가져오는데 실패했습니다.');
+        const errorData = await response.json().catch(() => ({})); // Try to parse error response
+        throw new Error(errorData?.error || `분석 결과를 가져오는데 실패했습니다 (${response.status})`);
       }
       
       const data = await response.json();
@@ -139,6 +146,10 @@ export default function FinancialAnalysis({ balanceSheet, incomeStatement, ratio
           </p>
         ))}
       </div>
+       <div className="mt-4 pt-3 border-t border-gray-200 text-xs text-gray-500">
+         {/* Example fix for potential unescaped quotes */}
+         <p>참고: 이 분석은 AI에 의해 생성되었으며, 실제 재무 전문가의 의견을 대체할 수 없습니다. 분석 기준년도는 달라질 수 있습니다.</p>
+       </div>
     </div>
   );
 } 
