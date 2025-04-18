@@ -1,10 +1,10 @@
-import { BalanceSheet, IncomeStatement, Ratios } from '@/types/financial';
+import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/types/financial';
 
 // 재무비율 계산 함수
 export function calculateFinancialRatios(
   balanceSheet: BalanceSheet, 
   incomeStatement: IncomeStatement
-): Ratios {
+): FinancialRatios {
   const bs = balanceSheet.rawData;
   const is = incomeStatement.rawData;
   
@@ -48,6 +48,7 @@ export function calculateFinancialRatios(
       revenueGrowth,
       operatingProfitGrowth,
       netIncomeGrowth
-    }
+    },
+    chartData: { labels: [], datasets: [] } 
   };
 } 
