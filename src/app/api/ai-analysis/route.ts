@@ -88,7 +88,7 @@ ${financialData}
 
     // OpenAI API 호출
     const response = await openai.chat.completions.create({
-      model: "gpt-4o", // 또는 "gpt-3.5-turbo"
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: "당신은 재무제표를 중학생도 이해할 수 있게 쉽게 설명해주는 친절한 재무 전문가입니다." },
         { role: "user", content: prompt }

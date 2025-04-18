@@ -32,28 +32,67 @@ export const searchCompany = async (keyword: string) => {
   });
 };
 
-// 회사 정보를 파일에서 로드하여 DB에 저장
+// 회사 정보를 파일에서 로드하여 DB에 저장 (Batch processing with bulkCreate)
 export async function loadCompaniesFromFile(filePath: string): Promise<void> {
+  let totalProcessed = 0;
+  let totalCount = 0;
   try {
+    console.log(`Reading file: ${filePath}`);
     const fileContent = fs.readFileSync(filePath, 'utf-8');
-    // Type the parsed data using CompanyType array
+    console.log('File read complete. Parsing JSON...');
     const data: CompanyType[] = JSON.parse(fileContent);
-    
-    console.log(`파일에서 ${data.length}개 회사 정보 로드 완료`);
+    totalCount = data.length;
+    console.log(`JSON parsing complete. Total companies: ${totalCount}`);
 
-    // 각 회사 정보에 대해 DB 작업 수행
-    for (const companyData of data) {
-      await Company.upsert({
+    if (!Array.isArray(data) || totalCount === 0) {
+      console.log('No company data found in the file or data is not an array.');
+      return; 
+    }
+
+    const batchSize = 1000; // Process 1000 records per batch
+    console.log(`Starting database batch insert/update (batch size: ${batchSize})...`);
+
+    for (let i = 0; i < totalCount; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      
+      // Prepare data for bulkCreate
+      const batchData = batch.map(companyData => ({
         corp_code: companyData.corp_code,
         corp_name: companyData.corp_name,
         stock_code: companyData.stock_code,
-      });
+      }));
+
+      try {
+        // Perform bulk insert/update
+        // Define fields to update on duplicate key (corp_code is unique)
+        const fieldsToUpdate: Array<keyof CompanyType> = ['corp_name', 'stock_code'];
+        await Company.bulkCreate(batchData, {
+          updateOnDuplicate: fieldsToUpdate,
+        });
+        
+        totalProcessed += batch.length;
+        console.log(`DB 저장 진행: ${totalProcessed}/${totalCount}`);
+
+      } catch (bulkError) {
+        console.error(`Error during batch insert/update starting at index ${i}:`, bulkError);
+        // Decide if you want to stop or continue on batch error
+        // For simplicity, we'll stop here, but you could add retry logic or skip the batch
+        throw new Error(`Batch processing failed at index ${i}.`); 
+      }
     }
     
-    console.log(`${data.length}개 회사 정보 DB 저장/업데이트 완료`);
+    console.log(`Batch processing finished.`);
+    console.log(`${totalProcessed}개 회사 정보 DB 저장/업데이트 완료.`);
+
   } catch (error) {
-    console.error('파일에서 회사 정보 로드 중 오류:', error);
-    throw error;
+    console.error('파일에서 회사 정보 로드 중 치명적 오류:', error);
+    if (error instanceof Error) {
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+    }
+    // Re-throw or handle as needed
+    // throw error;
   }
 }
 
@@ -78,11 +117,17 @@ export const getFinancialStatements = async (corpCode: string, year: string, rep
     });
     
     // 상태 코드와 메시지 로깅 추가
-    console.log(`API 응답 상태: ${response.data.status}, 메시지: ${response.data.message}`);
+    console.log(`재무제표 API 응답 상태: ${response.data.status}, 메시지: ${response.data.message}`);
     
     if (response.data.status === '000') {
       if (!response.data.list || response.data.list.length === 0) {
-        throw new Error(`해당 연도(${year})의 재무제표 데이터가 존재하지 않습니다. 다른 연도를 선택하세요.`);
+        console.log(`(${corpCode}, ${year}) : Status 000이지만 list가 비어있음.`);
+        if (parseInt(year) > 2015) {
+          console.log(`${year}년 데이터 없음, ${parseInt(year) - 1}년 시도...`);
+          return getFinancialStatements(corpCode, (parseInt(year) - 1).toString(), reportCode);
+        } else {
+          throw new Error(`데이터가 없는 가장 오래된 연도(2015)에 도달했습니다.`);
+        }
       }
       
       // 재무제표 종류 확인 (연결 재무제표인지 개별 재무제표인지)
@@ -94,24 +139,19 @@ export const getFinancialStatements = async (corpCode: string, year: string, rep
         isConsolidated
       };
     } else if (response.data.status === '013') {
-      // 조회된 데이터가 없는 경우 (일반적으로 발생하는 오류)
-      
-      // 현재 연도에 대한 데이터가 없고, 당해년도인 경우 전년도 데이터 자동 조회
-      const currentYear = new Date().getFullYear().toString();
-      if (year === currentYear || parseInt(year) > parseInt(currentYear)) {
-        console.log(`${year}년 데이터가 없어 ${parseInt(year) - 1}년 데이터를 자동으로 조회합니다.`);
-        
-        // 재귀적으로 전년도 데이터 조회
+      console.log(`(${corpCode}, ${year}) : Status 013 - 데이터 없음`);
+      if (parseInt(year) > 2015) {
+        console.log(`${year}년 데이터 없음, ${parseInt(year) - 1}년 시도...`);
         return getFinancialStatements(corpCode, (parseInt(year) - 1).toString(), reportCode);
+      } else {
+        throw new Error(`조회 가능한 데이터가 없습니다 (최소 연도 도달).`);
       }
-      
-      throw new Error(`해당 연도(${year})의 재무제표 데이터가 없습니다. 다른 연도를 선택해 주세요.`);
     } else if (response.data.status === '020') {
       throw new Error('API 키가 유효하지 않습니다. DART API 키를 확인해 주세요.');
     } else if (response.data.status === '100') {
       throw new Error('잘못된 API 요청입니다. 개발자에게 문의하세요.');
     } else {
-      throw new Error(`API 오류(${response.data.status}): ${response.data.message}`);
+      throw new Error(`DART API 오류(${response.data.status}): ${response.data.message}`);
     }
   } catch (error: unknown) {
     if (error instanceof Error && error.message?.includes('자동으로 조회합니다')) {
@@ -134,8 +174,7 @@ export const getFinancialStatements = async (corpCode: string, year: string, rep
     }
     // Note: All paths in this catch block now explicitly throw.
   }
-  // Add a throw at the end of the function to satisfy TypeScript
-  // This line should technically be unreachable if the try/catch logic is sound.
+  // This final throw should be unreachable if all paths above return or throw
   throw new Error('getFinancialStatements 함수가 예기치 않게 종료되었습니다.');
 };
 

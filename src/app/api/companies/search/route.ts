@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchCompany } from '@/lib/services/companyService';
-import { syncDatabase } from '@/lib/db/models';
-
-// 데이터베이스 초기화
-syncDatabase();
 
 export async function GET(request: NextRequest) {
   try {

@@ -1,8 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import { parseString } from 'xml2js';
-import { syncDatabase } from '../lib/db/models';
-import { loadCompaniesFromFile } from '../lib/services/companyService';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
+
+// Add .js extension to relative imports for Node ESM compatibility
+import { syncDatabase } from '../lib/db/models.js';
+import { loadCompaniesFromFile } from '../lib/services/companyService.js';
 
 // Define interface for the parsed company data
 interface CompanyData {
@@ -55,8 +61,10 @@ async function parseCorpCodeXML(xmlFilePath: string): Promise<CompanyData[]> {
 // 메인 함수
 async function processCorpCodeXML() {
   try {
-    // 데이터베이스 초기화
+    // 데이터베이스 초기화 (테이블 생성/동기화)
+    console.log('데이터베이스 동기화 시작...');
     await syncDatabase();
+    console.log('데이터베이스 동기화 완료.');
     
     // XML 파일 경로
     const dataDir = path.join(process.cwd(), 'data');
