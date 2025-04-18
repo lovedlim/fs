@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { BalanceSheet, IncomeStatement, Ratios } from '@/types/financial';
+import { BalanceSheet, IncomeStatement, FinancialRatios } from '@/types/financial';
 
 // OpenAI API 설정
 const getOpenAIClient = () => {
@@ -18,7 +18,7 @@ const getOpenAIClient = () => {
 export const analyzeFinancialStatements = async (
   balanceSheet: BalanceSheet, 
   incomeStatement: IncomeStatement, 
-  ratios: Ratios
+  ratios: FinancialRatios
 ): Promise<string | null> => {
   try {
     // API 키가 없으면 처리하지 않음
