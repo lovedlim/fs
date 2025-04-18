@@ -114,22 +114,29 @@ export const getFinancialStatements = async (corpCode: string, year: string, rep
       throw new Error(`API 오류(${response.data.status}): ${response.data.message}`);
     }
   } catch (error: unknown) {
-    // 이미 재귀 호출하는 경우의 오류는 그대로 전달
     if (error instanceof Error && error.message?.includes('자동으로 조회합니다')) {
-      throw error;
+      // Pass specific known errors through
+      throw error; 
     }
     
-    // axios 오류와 일반 오류 구분
     if (axios.isAxiosError(error)) {
-      // API 서버에서 응답을 받았지만 2xx 상태 코드가 아님
       console.error('API 응답 오류:', error.response?.status, error.response?.data);
-      throw new Error(`API 서버 오류 (${error.response?.status})`);
+      // Customize error message based on status if needed
+      throw new Error(`API 서버 오류 (${error.response?.status || 'N/A'})`);
     } else if (error instanceof Error) {
-      // 그 외 오류
       console.error('재무제표 데이터 가져오기 오류:', error);
+      // Re-throw the original error or a new one with the message
       throw error;
+    } else {
+      // Catch non-Error types being thrown
+      console.error('알 수 없는 오류 타입:', error);
+      throw new Error('재무제표 데이터 가져오기 중 알 수 없는 오류가 발생했습니다.');
     }
+    // Note: All paths in this catch block now explicitly throw.
   }
+  // Add a throw at the end of the function to satisfy TypeScript
+  // This line should technically be unreachable if the try/catch logic is sound.
+  throw new Error('getFinancialStatements 함수가 예기치 않게 종료되었습니다.');
 };
 
 // 재무제표가 연결 재무제표인지 확인하는 함수
