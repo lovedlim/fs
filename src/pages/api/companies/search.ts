@@ -10,17 +10,26 @@ export default async function handler(
   // 1. 요청 수신 로그
   console.log('API /api/companies/search received request');
 
-  // ... (기존 keyword 처리 등) ...
+  // --- keyword 변수 정의 확인 ---
+  const { keyword } = req.query; // 이 줄이 있는지, try 블록 밖 또는 안에서 접근 가능한지 확인
+
+  // 2. 검색어 확인 로그 (keyword 변수 사용)
+  console.log('Search keyword:', keyword);
+
+  if (!keyword || typeof keyword !== 'string') {
+    console.log('Invalid keyword');
+    return res.status(400).json({ message: '검색어를 입력해주세요.' });
+  }
+  // --- 여기까지 keyword 정의 및 유효성 검사 ---
 
   try {
     console.log('!!! [API Handler Test] DB 관련 로직 실행 전 !!!');
     // const companies = await searchCompany(keyword); // DB 호출 주석 처리
 
-    // 임시 응답
+    // 임시 응답 (keyword 변수 사용)
     res.status(200).json({ message: 'DB 로직 임시 비활성화됨', keyword });
 
   } catch (error: unknown) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     console.error('Error in /api/companies/search handler:', error);
 
     // 에러 객체의 상세 정보 로깅 시도
