@@ -1,90 +1,57 @@
-# 재무제표 시각화 앱
+# 프로젝트 JJ (가칭)
 
-이 애플리케이션은 DART(전자공시시스템) API를 사용하여 기업의 재무제표 데이터를 가져오고 시각화합니다.
+기업 정보 검색 및 관련 기능을 제공하는 Next.js 기반 웹 애플리케이션입니다.
 
 ## 주요 기능
 
-- 회사 검색 및 선택
-- 연도별 재무제표 데이터 조회
-- 재무상태표 및 손익계산서 시각화
-- 주요 재무비율 계산 및 표시
-- AI 기반 재무제표 분석 (중학생도 이해할 수 있는 쉬운 설명)
-
-## 설치 및 실행
-
-1. 패키지 설치
-```bash
-npm install
-```
-
-2. 환경 변수 설정
-`.env` 파일을 만들고 다음 내용을 추가합니다:
-```
-# DART API 키
-DART_API_KEY=your_dart_api_key
-
-# 데이터베이스 설정
-DATABASE_URL=sqlite:./database.sqlite
-
-# OpenAI API 키 (AI 분석 기능 사용 시 필요)
-OPENAI_API_KEY=your_openai_api_key
-```
-
-3. 개발 서버 시작
-```bash
-npm run dev
-```
-
-## AI 분석 기능 (선택사항)
-
-이 앱은 OpenAI API를 사용하여 기업의 재무제표를 중학생도 이해할 수 있는 쉬운 언어로 분석해주는 기능을 제공합니다. 이 기능을 사용하려면:
-
-1. [OpenAI 웹사이트](https://platform.openai.com/)에서 API 키를 발급받습니다.
-2. `.env` 파일에 `OPENAI_API_KEY` 값을 설정합니다.
-
-AI 분석 기능은 선택 사항이며, API 키가 설정되지 않은 경우 AI 분석 섹션은 표시되지만 분석 결과는 제공되지 않습니다.
+*   기업명 검색 API (`/api/companies/search`) 제공
+*   (추가 기능은 여기에 기술)
 
 ## 기술 스택
 
-- Next.js: 프론트엔드 및 백엔드 프레임워크
-- Tailwind CSS: UI 스타일링
-- Chart.js: 데이터 시각화
-- OpenAI API: 재무제표 AI 분석
-- SQLite: 로컬 데이터베이스
-
-## 기능
-
-- 회사명으로 기업 검색
-- DART API를 통한 재무제표 데이터 가져오기
-- 재무상태표 및 손익계산서 시각화
-- 주요 재무비율 계산 및 표시
-- 다양한 차트를 통한 데이터 분석
+*   **프레임워크:** [Next.js](https://nextjs.org/) (Pages Router 사용)
+*   **데이터베이스:** [PostgreSQL](https://www.postgresql.org/)
+*   **ORM:** [Sequelize](https://sequelize.org/)
+*   **타입스크립트:** [TypeScript](https://www.typescriptlang.org/)
+*   **스타일링:** [Tailwind CSS](https://tailwindcss.com/) (설정 파일 기준)
+*   **API 클라이언트:** [Axios](https://axios-http.com/)
+*   **기타:** Chart.js, OpenAI, React Markdown 등
 
 ## 시작하기
 
-### 필수 조건
+### 사전 요구 사항
 
-- Node.js 18 이상
-- DART API 인증키 (https://opendart.fss.or.kr/)에서 발급
+*   [Node.js](https://nodejs.org/) (v18 이상 권장 - `package.json`의 `engines` 필드 참조)
+*   [npm](https://www.npmjs.com/) 또는 [Yarn](https://yarnpkg.com/)
+*   [PostgreSQL](https://www.postgresql.org/download/) 데이터베이스 서버
 
 ### 설치
 
-1. 리포지토리 클론
-```bash
-git clone <repository-url>
-cd <repository-name>
-```
+1.  저장소를 클론합니다:
+    ```bash
+    git clone <저장소_URL>
+    cd jj
+    ```
+2.  의존성을 설치합니다:
+    ```bash
+    npm install
+    # 또는
+    # yarn install
+    ```
 
-2. 의존성 설치
-```bash
-npm install
-```
+### 환경 변수 설정
 
-3. 환경 변수 설정
-```bash
-# .env 파일 생성
-DART_API_KEY=your_api_key_here
-DATABASE_URL=sqlite:./database.sqlite
+프로젝트 루트 디렉토리에 `.env` 파일을 생성하고 다음 환경 변수를 설정합니다. 실제 운영 환경(예: Vercel)에서는 해당 플랫폼의 환경 변수 설정 기능을 사용하세요.
+
+```dotenv:.env
+# PostgreSQL 데이터베이스 연결 URL
+DATABASE_URL=postgres://user:password@localhost:5432/database
+
+# DART API 키
+DART_API_KEY=your_dart_api_key
+
+# OpenAI API 키 (AI 분석 기능 사용 시 필요)
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 4. 회사 데이터 로드
