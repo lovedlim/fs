@@ -19,21 +19,30 @@ if (!databaseUrl) {
   // console.log('[DB Init] DATABASE_URL is set.');
 }
 
-let sequelize: Sequelize;
+// 환경에 따라 다른 데이터베이스 사용
+const isProduction = process.env.NODE_ENV === 'production';
 
-try {
-  // --- Sequelize 인스턴스 생성 로깅 및 에러 핸들링 강화 ---
-  // console.log('[DB Init] Attempting to create Sequelize instance...');
-  sequelize = new Sequelize(databaseUrl, {
+let sequelize;
+if (isProduction) {
+  // Vercel 환경에서는 SQLite 사용
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: ':memory:', // 메모리 기반 SQLite (또는 파일 경로)
+    logging: false
+  });
+} else {
+  // 개발 환경에서는 PostgreSQL 사용
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
-    // --- 디버깅을 위해 로깅 활성화 ---
-    logging: console.log, // DB 쿼리 및 내부 동작 로깅 (문제 해결 후 false로 변경 권장)
+    dialectModule: require('pg'), // 명시적으로 pg 모듈 지정
     dialectOptions: {
       ssl: {
         require: true,
-        rejectUnauthorized: false
+        rejectUnauthorized: false // 자체 서명된 인증서 허용 (필요한 경우)
       }
     },
+    // --- 디버깅을 위해 로깅 활성화 ---
+    logging: console.log, // DB 쿼리 및 내부 동작 로깅 (문제 해결 후 false로 변경 권장)
     define: {
       timestamps: false,
       underscored: true
@@ -52,11 +61,6 @@ try {
   // sequelize.authenticate()
   //   .then(() => console.log('[DB Init] Database connection authenticated successfully.'))
   //   .catch(err => console.error('[DB Init] !!! Unable to authenticate database connection:', err));
-
-} catch (error) {
-  console.error('[DB Init] !!! Failed to create Sequelize instance:', error); // 에러 발생 시 상세 로그
-  // 에러를 다시 던져서 Vercel 로그에 명확히 표시되도록 함
-  throw error;
 }
 
 // 회사 정보 모델
