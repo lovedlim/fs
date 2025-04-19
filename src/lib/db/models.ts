@@ -4,6 +4,7 @@
 
 // 기존 코드는 모두 주석 처리
 import { Sequelize, DataTypes, Model } from 'sequelize';
+import pg from 'pg';
 
 // --- 상세 로깅 추가 ---
 // console.log('[DB Init] Loading db/models.ts module...');
@@ -34,7 +35,7 @@ if (isProduction) {
   // 개발 환경에서는 PostgreSQL 사용
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
-    dialectModule: require('pg'), // 명시적으로 pg 모듈 지정
+    dialectModule: pg,
     dialectOptions: {
       ssl: {
         require: true,
