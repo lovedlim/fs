@@ -7,29 +7,26 @@ import { DartRawItem, DartApiResponse } from '@/lib/utils/financialUtils';
 
 // 회사 검색 함수
 export const searchCompany = async (keyword: string) => {
-  // SQLite에서는 LIKE가 case-sensitive일 수 있으므로 다양한 검색 조건 추가
-  return await Company.findAll({
-    where: {
-      [Op.or]: [
-        {
-          corp_name: {
-            [Op.like]: `%${keyword}%`
-          }
-        },
-        {
-          corp_name: {
-            [Op.like]: `%${keyword.toUpperCase()}%`
-          }
-        },
-        {
-          corp_name: {
-            [Op.like]: `%${keyword.toLowerCase()}%`
-          }
-        }
-      ]
-    },
-    limit: 20
-  });
+  console.log(`[searchCompany] Searching for keyword: ${keyword}`); // 함수 시작 로그
+  try {
+    // SQLite에서는 LIKE가 case-sensitive일 수 있으므로 다양한 검색 조건 추가
+    const results = await Company.findAll({ // DB 쿼리 전 로그 추가 가능
+      where: {
+        [Op.or]: [
+          { corp_name: { [Op.like]: `%${keyword}%` } },
+          { corp_name: { [Op.like]: `%${keyword.toUpperCase()}%` } },
+          { corp_name: { [Op.like]: `%${keyword.toLowerCase()}%` } }
+        ]
+      },
+      limit: 20
+    });
+    console.log(`[searchCompany] Found ${results.length} companies.`); // DB 쿼리 성공 로그
+    return results;
+  } catch (error) {
+    console.error(`[searchCompany] Error searching companies for keyword "${keyword}":`, error); // 에러 로그
+    // 에러를 다시 던지거나 적절히 처리
+    throw error;
+  }
 };
 
 // 회사 정보를 파일에서 로드하여 DB에 저장 (Batch processing with bulkCreate)
