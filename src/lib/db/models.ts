@@ -1,3 +1,8 @@
+// --- 모듈 로딩 테스트 로그 ---
+console.log('!!! [DB Models Test] src/lib/db/models.ts 파일 로딩 시도 !!!');
+
+/*
+// 기존 코드는 모두 주석 처리
 import { Sequelize, DataTypes, Model } from 'sequelize';
 
 // --- 상세 로깅 추가 ---
@@ -112,4 +117,8 @@ export const syncDatabase = async () => {
 // --- 모듈 로드 완료 로그 ---
 console.log('[DB Init] db/models.ts module loaded successfully.');
 
-export default sequelize; 
+export default sequelize;
+*/
+
+// 임시 export (파일이 비어있지 않도록)
+export const tempExport = {}; 
