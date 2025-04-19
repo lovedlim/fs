@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 // models.ts 파일을 불러오는 것 자체를 테스트하기 위해 import는 유지
 import '@/lib/db/models'; // 경로가 정확한지 확인, sequelize 인스턴스를 직접 사용하지 않으므로 이름 없이 import 가능
-// import { searchCompany } from '@/lib/services/companyService'; // 실제 DB 사용은 주석 처리
+// 실제 DB 사용을 위해 searchCompany import 주석 해제
+import { searchCompany } from '@/lib/services/companyService';
 
 export default async function handler(
   req: NextApiRequest,
@@ -10,24 +11,29 @@ export default async function handler(
   // 1. 요청 수신 로그
   console.log('API /api/companies/search received request');
 
-  // --- keyword 변수 정의 확인 ---
-  const { keyword } = req.query; // 이 줄이 있는지, try 블록 밖 또는 안에서 접근 가능한지 확인
+  // --- keyword 대신 query 사용 ---
+  const { query } = req.query; // req.query에서 'query' 파라미터를 추출
 
-  // 2. 검색어 확인 로그 (keyword 변수 사용)
-  console.log('Search keyword:', keyword);
+  // 2. 검색어 확인 로그 (query 변수 사용)
+  console.log('Search query:', query);
 
-  if (!keyword || typeof keyword !== 'string') {
-    console.log('Invalid keyword');
+  if (!query || typeof query !== 'string') { // query 변수로 유효성 검사
+    console.log('Invalid query');
     return res.status(400).json({ message: '검색어를 입력해주세요.' });
   }
-  // --- 여기까지 keyword 정의 및 유효성 검사 ---
+  // --- 여기까지 query 정의 및 유효성 검사 ---
 
   try {
     console.log('!!! [API Handler Test] DB 관련 로직 실행 전 !!!');
-    // const companies = await searchCompany(keyword); // DB 호출 주석 처리
+    // DB 호출 주석 해제
+    const companies = await searchCompany(query as string); // query를 string으로 타입 단언
 
-    // 임시 응답 (keyword 변수 사용)
-    res.status(200).json({ message: 'DB 로직 임시 비활성화됨', keyword });
+    // 임시 응답 대신 실제 검색 결과 반환
+    res.status(200).json({ companies });
+    // console.log('!!! [API Handler Test] DB 관련 로직 실행 후, 결과 반환 !!!', companies); // 결과 로깅 (필요시)
+
+    // 임시 응답 주석 처리 또는 삭제
+    // res.status(200).json({ message: 'DB 로직 임시 비활성화됨', query });
 
   } catch (error: unknown) {
     console.error('Error in /api/companies/search handler:', error);
