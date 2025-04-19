@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "eslint --fix src/lib/db/models.ts && next build",
     "start": "next start",
     "lint": "next lint",
     "load-data": "npx tsx src/scripts/loadCompanyData.ts",

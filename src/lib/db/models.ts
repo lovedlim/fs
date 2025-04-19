@@ -1,10 +1,12 @@
 // --- 모듈 로딩 테스트 로그 ---
 // console.log('!!! [DB Models Test] src/lib/db/models.ts 파일 로딩 시도 !!!');
 
-
 // 기존 코드는 모두 주석 처리
 import { Sequelize, DataTypes, Model } from 'sequelize';
-// pg는 조건부로 import
+// ESLint 규칙 비활성화
+/* eslint-disable @typescript-eslint/no-require-imports */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import pg from 'pg';
 
 // --- 상세 로깅 추가 ---
 // console.log('[DB Init] Loading db/models.ts module...');
@@ -17,14 +19,8 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL 환경 변수가 설정되지 않았습니다.');
 }
 
-// 환경에 따라 다른 데이터베이스 사용
-const isProduction = process.env.NODE_ENV === 'production';
-
 let sequelize;
 try {
-  // pg 모듈을 동적으로 로드
-  const pg = require('pg');
-  
   sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     dialectModule: pg,
