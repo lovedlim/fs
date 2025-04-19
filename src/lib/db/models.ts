@@ -4,7 +4,7 @@
 
 // 기존 코드는 모두 주석 처리
 import { Sequelize, DataTypes, Model } from 'sequelize';
-import pg from 'pg';
+// pg는 조건부로 import
 
 // --- 상세 로깅 추가 ---
 // console.log('[DB Init] Loading db/models.ts module...');
@@ -13,55 +13,50 @@ import pg from 'pg';
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  console.error('[DB Init] FATAL: DATABASE_URL environment variable is not set.'); // 에러 로그 강화
+  console.error('[DB Init] FATAL: DATABASE_URL environment variable is not set.');
   throw new Error('DATABASE_URL 환경 변수가 설정되지 않았습니다.');
-} else {
-  // 중요: 실제 URL 로그는 보안상 주의. 앞부분만 로깅하거나, 존재 여부만 로깅.
-  // console.log('[DB Init] DATABASE_URL is set.');
 }
 
 // 환경에 따라 다른 데이터베이스 사용
 const isProduction = process.env.NODE_ENV === 'production';
 
 let sequelize;
-if (isProduction) {
-  // Vercel 환경에서는 SQLite 사용
-  sequelize = new Sequelize({
-    dialect: 'sqlite',
-    storage: ':memory:', // 메모리 기반 SQLite (또는 파일 경로)
-    logging: false
-  });
-} else {
-  // 개발 환경에서는 PostgreSQL 사용
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
+try {
+  // pg 모듈을 동적으로 로드
+  const pg = require('pg');
+  
+  sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     dialectModule: pg,
     dialectOptions: {
       ssl: {
         require: true,
-        rejectUnauthorized: false // 자체 서명된 인증서 허용 (필요한 경우)
+        rejectUnauthorized: false
       }
     },
-    // --- 디버깅을 위해 로깅 활성화 ---
-    logging: console.log, // DB 쿼리 및 내부 동작 로깅 (문제 해결 후 false로 변경 권장)
+    logging: process.env.NODE_ENV === 'production' ? false : console.log,
     define: {
       timestamps: false,
       underscored: true
     },
-    // --- 서버리스 환경을 위한 풀 설정 (선택 사항) ---
     pool: {
-      max: 5, // 동시에 유지할 최대 커넥션 수
-      min: 0, // 최소 커넥션 수
-      acquire: 30000, // 커넥션 얻기 시도 타임아웃 (ms)
-      idle: 10000 // 커넥션 유지 시간 (ms)
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
     }
   });
-  // console.log('[DB Init] Sequelize instance created successfully.');
-
-  // --- 연결 테스트 (선택 사항, 디버깅에 유용) ---
-  // sequelize.authenticate()
-  //   .then(() => console.log('[DB Init] Database connection authenticated successfully.'))
-  //   .catch(err => console.error('[DB Init] !!! Unable to authenticate database connection:', err));
+  
+  console.log('[DB Init] Sequelize instance created successfully with PostgreSQL.');
+} catch (error) {
+  console.error('[DB Init] Failed with PostgreSQL, falling back to SQLite:', error);
+  
+  // PostgreSQL 연결 실패 시 SQLite로 폴백
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: '/tmp/database.sqlite',
+    logging: false
+  });
 }
 
 // 회사 정보 모델
