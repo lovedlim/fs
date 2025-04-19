@@ -20,7 +20,18 @@ export default async function handler(
     res.status(200).json({ message: 'DB 로직 임시 비활성화됨', keyword });
 
   } catch (error: unknown) {
-    // ... (기존 에러 처리) ...
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    console.error('Error in /api/companies/search handler:', error);
+
+    // 에러 객체의 상세 정보 로깅 시도
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    } else {
+      console.error('Caught a non-Error object:', error);
+    }
+
     res.status(500).json({ message: '회사 검색 중 서버 오류가 발생했습니다.' });
   }
 } 
